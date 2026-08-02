@@ -16,6 +16,8 @@ publish to, so they are scheme-checked here and fully re-validated by
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Protocol
 from urllib.parse import urlsplit
@@ -25,6 +27,71 @@ import httpx
 from .config import SearchConfig
 
 _SAFE_SCHEMES = frozenset({"http", "https"})
+
+_WHITESPACE = re.compile(r"\s+")
+_TOKEN = re.compile(r"[a-z0-9]+")
+
+# Just enough to stop "the", "of" and friends dominating a coverage score.
+# Deliberately tiny: an aggressive stopword list starts eating real query terms
+# in languages this list was never built for.
+_STOPWORDS = frozenset(
+    """a an and are as at be by for from has how in is it of on or that the to
+    what when where which who why with""".split()
+)
+
+
+def normalize_query(query: str) -> str:
+    """Canonical form of a query, for cache keys only.
+
+    Never sent to the search backend — engines should see exactly what the
+    caller typed. This only decides whether two requests are the same request.
+
+    Word order is preserved on purpose: "dog bites man" and "man bites dog"
+    are different searches, so sorting tokens here would serve the wrong
+    cached answer.
+    """
+    text = unicodedata.normalize("NFC", query)
+    text = _WHITESPACE.sub(" ", text).strip().lower()
+    # Trailing question and exclamation marks carry no search meaning.
+    # Full stops are left alone — they are load-bearing in "node.js".
+    return text.rstrip("?!").strip()
+
+
+def relevance_score(query: str, result: "SearchResult") -> float:
+    """Fraction of the query's content words that appear in a result, 0.0–1.0.
+
+    A crude signal, and crude is the point: it costs nothing, needs no model,
+    and catches the failure that actually happens — an engine that is
+    rate-limited but still answering, matching one word of the query and
+    returning something unrelated. Bing answered "server-side request forgery"
+    with pages about servers.
+
+    Returns 1.0 when the query has no scorable content words, so an unusual
+    query never penalises every result equally.
+    """
+    tokens = [t for t in _TOKEN.findall(query.lower()) if len(t) > 1 and t not in _STOPWORDS]
+    if not tokens:
+        return 1.0
+
+    haystack = f"{result.title} {result.snippet} {result.url}".lower()
+    hits = sum(1 for token in set(tokens) if token in haystack)
+    return hits / len(set(tokens))
+
+
+def rank_by_relevance(query: str, results: list["SearchResult"]) -> list["SearchResult"]:
+    """Reorder results so obviously-unrelated ones sink.
+
+    Demotes rather than drops. Dropping would lose results that are relevant
+    but share no literal token with the query — an "SSRF explained" page for
+    the query "server-side request forgery" scores zero and is still the right
+    answer. Sorting is stable, so within an equal score the backend's own
+    ranking is preserved.
+    """
+    scored = [(relevance_score(query, r), r) for r in results]
+    for score, result in scored:
+        result.relevance = round(score, 3)
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [result for _, result in scored]
 
 
 class SearchError(RuntimeError):
@@ -38,6 +105,9 @@ class SearchResult:
     snippet: str
     page_age: str | None = None
     engine: str | None = None
+    # Set by rank_by_relevance. Exposed so a caller can see *why* the order
+    # is what it is, rather than having to trust it.
+    relevance: float | None = None
 
     def as_dict(self) -> dict:
         return {
@@ -46,6 +116,7 @@ class SearchResult:
             "snippet": self.snippet,
             "page_age": self.page_age,
             "engine": self.engine,
+            "relevance": self.relevance,
         }
 
 
@@ -229,4 +300,15 @@ async def web_search(
     filtered = filter_results(
         raw, allowed_domains=allowed_domains, blocked_domains=blocked_domains
     )
-    return filtered[:limit]
+    # Rank before truncating: a demoted result must not hold a slot that a
+    # relevant one further down the list should have had.
+    ranked = rank_by_relevance(query, filtered)
+
+    floor = cfg.relevance_floor
+    if floor > 0:
+        kept = [r for r in ranked if (r.relevance or 0.0) >= floor]
+        # Never return nothing on account of the floor — a query whose terms
+        # simply do not appear literally would otherwise look like an outage.
+        ranked = kept or ranked
+
+    return ranked[:limit]

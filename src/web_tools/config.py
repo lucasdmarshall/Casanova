@@ -57,9 +57,21 @@ class SearchConfig:
     #
     # Run `python -m web_tools.engine_check` on your own host and set
     # WT_SEARCH_ENGINES from its output rather than trusting this list.
-    engines: tuple[str, ...] = ("google cse", "wikipedia")
+    engines: tuple[str, ...] = (
+        "google cse",
+        "duckduckgo web",
+        "yandex",
+        "mwmbl",
+        "wikipedia",
+    )
 
     language: str = "en"
+
+    # Results scoring below this are dropped, 0.0-1.0. Default 0 = never drop,
+    # only reorder. Raise it only if you have measured that your engine mix
+    # returns genuine noise; a floor cannot tell "irrelevant" from "relevant
+    # but phrased differently".
+    relevance_floor: float = 0.0
 
     @classmethod
     def from_env(cls) -> "SearchConfig":
@@ -69,6 +81,29 @@ class SearchConfig:
             max_results=_env_int("WT_SEARCH_MAX_RESULTS", cls.max_results),
             engines=_env_list("WT_SEARCH_ENGINES", cls.engines),
             language=os.getenv("WT_SEARCH_LANGUAGE", cls.language),
+            relevance_floor=_env_float("WT_RELEVANCE_FLOOR", cls.relevance_floor),
+        )
+
+
+@dataclass(frozen=True)
+class BudgetConfig:
+    """Per-session call caps — the ``max_uses`` equivalent.
+
+    Both default to 0 (unlimited) so the library never caps anything by
+    surprise. The shipped docker-compose sets real values: a deployment wants
+    runaway protection, a library import does not.
+    """
+
+    max_searches: int = 0
+    max_fetches: int = 0
+    ttl: int = 3600
+
+    @classmethod
+    def from_env(cls) -> "BudgetConfig":
+        return cls(
+            max_searches=_env_int("WT_MAX_SEARCHES_PER_SESSION", cls.max_searches),
+            max_fetches=_env_int("WT_MAX_FETCHES_PER_SESSION", cls.max_fetches),
+            ttl=_env_int("WT_BUDGET_TTL", cls.ttl),
         )
 
 
@@ -167,7 +202,7 @@ class FetchConfig:
     max_chars: int = 50_000
 
     user_agent: str = (
-        "Mozilla/5.0 (compatible; web-tools/0.1; +https://github.com/self-hosted/web-tools)"
+        "Mozilla/5.0 (compatible; web-tools/0.1; +https://github.com/lucasdmarshall/web_search)"
     )
 
     # DANGEROUS. Disables the SSRF perimeter so tests can hit 127.0.0.1.

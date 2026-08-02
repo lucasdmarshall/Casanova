@@ -10,7 +10,7 @@ perimeter you control.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-145%20passing-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-177%20passing-brightgreen.svg)](#testing)
 [![MCP](https://img.shields.io/badge/MCP-compatible-8A2BE2.svg)](https://modelcontextprotocol.io/)
 
 </div>
@@ -106,7 +106,8 @@ python -m web_tools.mcp_server
 | [`provenance.py`](src/web_tools/provenance.py) | URL provenance — exfiltration control |
 | [`robots.py`](src/web_tools/robots.py) | robots.txt, fetched through the guard |
 | [`search.py`](src/web_tools/search.py) | SearXNG adapter behind a swappable protocol |
-| [`cache.py`](src/web_tools/cache.py) | SQLite TTL cache |
+| [`budget.py`](src/web_tools/budget.py) | Per-session call caps — the `max_uses` equivalent |
+| [`cache.py`](src/web_tools/cache.py) | SQLite TTL cache, keyed on normalized queries |
 | [`tools.py`](src/web_tools/tools.py) | Shared layer both front ends call |
 
 ---
@@ -250,6 +251,44 @@ block you.
 
 ---
 
+## Keeping tool use cheap
+
+The usual advice is a `shouldSearch(query)` gate — classify the query, skip the
+search if it looks unnecessary. **This project deliberately does not do that**,
+for three reasons:
+
+- **The decision belongs to the model.** A tool server sees a query string; the
+  model sees the whole conversation. Putting the choice in the tool moves it to
+  whoever has *less* information.
+- **The economics invert.** A SearXNG query here is free and takes ~1s. An LLM
+  classifier costs an API call and ~1s. You would be paying money to avoid a
+  free operation — advice written for paid search APIs, misapplied.
+- **The failure is asymmetric.** An unnecessary search wastes a second. A
+  *skipped* search produces a confident answer from stale memory, which is the
+  worst thing an agent can do.
+
+What is here instead is structural, not semantic — it counts and reorders, and
+never tries to understand what a query means:
+
+| Lever | What it does |
+|---|---|
+| **Prescriptive tool descriptions** | Says *when* to call, not just what it does. Zero runtime cost, and the main thing that actually shapes triggering |
+| **`max_uses` budgets** | Per-session caps on searches and fetches. Bounds runaway loops. Cached searches don't count — they cost nothing externally |
+| **Query normalization** | `"Bitcoin Price?"` and `" bitcoin  price "` share one cache entry instead of three |
+| **Relevance ranking** | Results that share no content words with the query sink to the bottom |
+
+The ranking answers a real failure that is worse than searching too often:
+*searched, then trusted garbage*. A rate-limited engine keeps answering — Bing
+returned pages about **servers** for `server-side request forgery`, and those
+outranked good results once merged. Nothing errors.
+
+It **demotes rather than drops**, because a floor cannot tell "irrelevant" from
+"relevant but phrased differently" — an *SSRF explained* page scores zero on
+`server-side request forgery` and is still the right answer. Scores are exposed
+on every result, and `WT_RELEVANCE_FLOOR` defaults to `0` (reorder only).
+
+---
+
 ## API
 
 | Endpoint | Purpose |
@@ -276,6 +315,9 @@ All via environment variable.
 | `WT_SEARXNG_URL` | `http://searxng:8080` | Service name on the compose network |
 | `WT_SEARCH_ENGINES` | `google cse,duckduckgo web,yandex,mwmbl,wikipedia` | Host-dependent — measure it |
 | `WT_FETCH_URL_POLICY` | `strict` | `strict` / `warn` / `off` |
+| `WT_MAX_SEARCHES_PER_SESSION` | `0` | `max_uses` for search; 0 = unlimited |
+| `WT_MAX_FETCHES_PER_SESSION` | `0` | `max_uses` for fetch; 0 = unlimited |
+| `WT_RELEVANCE_FLOOR` | `0.0` | Drop results below this score; 0 = reorder only |
 | `WT_RESPECT_ROBOTS` | `true` | |
 | `WT_ROBOTS_TTL` | `86400` | One robots.txt per host per day |
 | `WT_MAX_BYTES` | `5242880` | Cap on decoded response body |
@@ -293,10 +335,10 @@ All via environment variable.
 pytest -q
 ```
 
-**145 tests.** The bulk cover `guard.py` and `provenance.py` — one case per real
+**177 tests.** The bulk cover `guard.py` and `provenance.py` — one case per real
 technique: metadata IPs, CGNAT, v4-mapped IPv6, 6to4, split-horizon DNS answers,
 credential-stuffed URLs, non-web ports, cross-session URL leakage,
-query-string exfiltration, and cache-ordering bypasses.
+query-string exfiltration, cache-ordering bypasses, and budget accounting.
 
 Before deploying onto a host with live workloads:
 

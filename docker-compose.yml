@@ -50,6 +50,10 @@ services:
       # Refuse URLs that never appeared in the conversation (exfiltration
       # control). Clients register user-supplied URLs via POST /context/urls.
       - WT_FETCH_URL_POLICY=strict
+      # Runaway-loop protection. Structural, not semantic: it counts calls
+      # and never inspects what a query means. Cached searches don't count.
+      - WT_MAX_SEARCHES_PER_SESSION=20
+      - WT_MAX_FETCHES_PER_SESSION=30
       - WT_MAX_BYTES=5242880
       - WT_MAX_CHARS=50000
     volumes:
