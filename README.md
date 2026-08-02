@@ -1,12 +1,17 @@
 <div align="center">
 
-# Web Search
+<img src="assets/casanova-logo.png" alt="Casanova" width="200" />
 
-**Self-hosted `web_search` and `web_fetch` — no third-party API keys.**
+# Casanova
 
-A drop-in replacement for hosted agent web tools. Search runs against your own
+**A self-hosted tool hub for AI agents — no third-party API keys.**
+
+Casanova is a growing collection of agent tools you run on your own machine.
+The first tools shipped are `web_search` and `web_fetch`: a drop-in replacement
+for hosted agent web tools. Search runs against your own
 [SearXNG](https://github.com/searxng/searxng); fetching runs through a hardened
-perimeter you control.
+perimeter you control. More tools are on the way — same principle every time:
+self-hosted, key-free, and built to be inspected.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
@@ -14,6 +19,16 @@ perimeter you control.
 [![MCP](https://img.shields.io/badge/MCP-compatible-8A2BE2.svg)](https://modelcontextprotocol.io/)
 
 </div>
+
+---
+
+## Tools
+
+| Tool | Status | What it does |
+|---|---|---|
+| **`web_search`** | ✅ shipped | Ranked search results via your own SearXNG — titles, URLs, snippets |
+| **`web_fetch`** | ✅ shipped | Fetch one URL as clean markdown, through an SSRF-hardened perimeter |
+| _more_ | 🚧 planned | The hub is designed to grow — additional agent tools land here over time |
 
 ---
 
@@ -39,8 +54,8 @@ codebase.
 ## Quick start
 
 ```bash
-git clone https://github.com/lucasdmarshall/web_search.git
-cd web_search
+git clone https://github.com/lucasdmarshall/Casanova.git
+cd Casanova
 ```
 
 ```bash
