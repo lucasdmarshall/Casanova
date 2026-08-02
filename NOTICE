@@ -1,0 +1,21 @@
+Web Search
+Copyright 2026 Lucas D Marshall (Kaung Myat San)
+
+This product includes software developed by Lucas D Marshall (Kaung Myat San).
+
+--------------------------------------------------------------------------------
+
+This product depends on software from third parties, each under its own license:
+
+  - httpx (BSD-3-Clause)          https://github.com/encode/httpx
+  - trafilatura (Apache-2.0)      https://github.com/adbar/trafilatura
+  - pypdf (BSD-3-Clause)          https://github.com/py-pdf/pypdf
+  - FastAPI (MIT)                 https://github.com/fastapi/fastapi
+  - uvicorn (BSD-3-Clause)        https://github.com/encode/uvicorn
+  - mcp (MIT)                     https://github.com/modelcontextprotocol/python-sdk
+
+Deployments of this software may run SearXNG (AGPL-3.0) as a separate service
+in its own container. SearXNG is not distributed as part of this product and
+is not linked into it; it is reached over HTTP as an independent process.
+
+  - SearXNG (AGPL-3.0)            https://github.com/searxng/searxng

@@ -1,0 +1,49 @@
+[project]
+name = "web-search"
+version = "0.1.0"
+description = "Self-hosted web_search and web_fetch tools for LLM agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Lucas D Marshall (Kaung Myat San)" }]
+keywords = ["llm", "agent", "mcp", "web-search", "web-fetch", "searxng", "ssrf"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Security",
+]
+dependencies = [
+    "httpx>=0.28",
+    "trafilatura>=2.0",
+    "pypdf>=5.0",
+]
+
+[project.optional-dependencies]
+service = ["fastapi>=0.115", "uvicorn[standard]>=0.30"]
+mcp = ["mcp>=2.0"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
+
+[project.urls]
+Homepage = "https://github.com/lucasdmarshall/web_search"
+Repository = "https://github.com/lucasdmarshall/web_search"
+Issues = "https://github.com/lucasdmarshall/web_search/issues"
+
+[project.scripts]
+web-tools-mcp = "web_tools.mcp_server:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"

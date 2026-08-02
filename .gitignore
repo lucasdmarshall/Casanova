@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.env
+cache.db*
+
+# Credential notes must never be committed. Kept broad on purpose.
+*[Ss]erver*[Aa]ccess*
+*[Cc]redential*
+*.pem
+*.key
+id_rsa*

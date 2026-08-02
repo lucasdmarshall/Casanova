@@ -1,0 +1,74 @@
+# Two containers, one private network.
+#
+# SearXNG publishes no ports. It is reachable only from web-tools over the
+# compose network, which is why its limiter can safely stay off. Do not add a
+# `ports:` block to it on a public VPS.
+#
+# Designed to sit alongside existing workloads:
+#   - `name:` pins the compose project so it cannot adopt or clash with
+#     containers from another stack on the same host.
+#   - The published port is configurable; if 8000 is taken, set WT_PORT.
+#   - A dedicated bridge network, so nothing joins an existing one.
+
+name: web-tools
+
+services:
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://searxng:8080/
+      - UWSGI_WORKERS=4
+      - UWSGI_THREADS=4
+    networks:
+      - internal
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web-tools:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - searxng
+    environment:
+      - WT_SEARXNG_URL=http://searxng:8080
+      - WT_CACHE_PATH=/data/cache.db
+      # Measured with `python -m web_tools.engine_check`. Four independent
+      # indexes: search survives losing any one of them.
+      - WT_SEARCH_ENGINES=google cse,duckduckgo web,yandex,mwmbl,wikipedia
+      # Refuse URLs that never appeared in the conversation (exfiltration
+      # control). Clients register user-supplied URLs via POST /context/urls.
+      - WT_FETCH_URL_POLICY=strict
+      - WT_MAX_BYTES=5242880
+      - WT_MAX_CHARS=50000
+    volumes:
+      - cache:/data
+    # Bound to loopback: put your own auth in front before exposing this.
+    # An open instance is an egress proxy for whoever finds it.
+    ports:
+      - "127.0.0.1:${WT_PORT:-8000}:8000"
+    networks:
+      - internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  cache:
