@@ -7,10 +7,10 @@
 **A self-hosted tool hub for AI agents — no third-party API keys.**
 
 Casanova is a growing collection of agent tools you run on your own machine.
-The first tools shipped are `web_search` and `web_fetch`: a drop-in replacement
-for hosted agent web tools. Search runs against your own
-[SearXNG](https://github.com/searxng/searxng); fetching runs through a hardened
-perimeter you control. More tools are on the way — same principle every time:
+`web_search` and `web_fetch` replace hosted agent web tools — search against
+your own [SearXNG](https://github.com/searxng/searxng), fetch through a
+hardened perimeter you control. [`transcriptanova/`](transcriptanova/) adds
+free open-source speech-to-text via Whisper. Same principle every time:
 self-hosted, key-free, and built to be inspected.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
@@ -28,6 +28,7 @@ self-hosted, key-free, and built to be inspected.
 |---|---|---|
 | **`web_search`** | ✅ shipped | Ranked search results via your own SearXNG — titles, URLs, snippets |
 | **`web_fetch`** | ✅ shipped | Fetch one URL as clean markdown, through an SSRF-hardened perimeter |
+| **`transcribe`** | 🚧 scaffold | Free open-source Whisper STT — [`transcriptanova/`](transcriptanova/) |
 | _more_ | 🚧 planned | The hub is designed to grow — additional agent tools land here over time |
 
 ---
