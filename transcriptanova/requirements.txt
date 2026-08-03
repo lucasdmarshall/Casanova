@@ -1,0 +1,16 @@
+# Runtime — pin ranges; install with: pip install -e ".[service,mcp]"
+# Or: pip install -r requirements.txt
+
+faster-whisper>=1.1
+httpx>=0.28
+
+# HTTP service
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+
+# MCP front end (Claude Desktop / Cursor / agent runtimes)
+mcp>=2.0
+
+# Optional alternate backend (heavier; prefer faster-whisper)
+# openai-whisper>=20240930

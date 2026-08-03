@@ -28,6 +28,7 @@ self-hosted, key-free, and built to be inspected.
 |---|---|---|
 | **`web_search`** | ✅ shipped | Ranked search results via your own SearXNG — titles, URLs, snippets |
 | **`web_fetch`** | ✅ shipped | Fetch one URL as clean markdown, through an SSRF-hardened perimeter |
+| **`transcribe`** | 🚧 scaffold | Free open-source Whisper STT — see [`transcriptanova/`](transcriptanova/) |
 | _more_ | 🚧 planned | The hub is designed to grow — additional agent tools land here over time |
 
 ---

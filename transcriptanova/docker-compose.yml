@@ -1,0 +1,42 @@
+# Transcriptanova — free open-source Whisper STT for agents (HTTP + MCP).
+#
+# CPU default. For GPU, swap the image/runtime once the host has NVIDIA
+# Container Toolkit and set TN_DEVICE=cuda TN_COMPUTE_TYPE=float16.
+#
+# Bound to loopback: put your own auth in front before exposing this.
+
+name: transcriptanova
+
+services:
+  transcriptanova:
+    build: .
+    restart: unless-stopped
+    environment:
+      - TN_MODEL=${TN_MODEL:-base}
+      - TN_DEVICE=${TN_DEVICE:-cpu}
+      - TN_COMPUTE_TYPE=${TN_COMPUTE_TYPE:-int8}
+      - TN_DOWNLOAD_ROOT=/data/models
+      - TN_MAX_BYTES=${TN_MAX_BYTES:-26214400}
+      - TN_VAD_FILTER=true
+      # Keep URL fetch off until an SSRF perimeter is in place.
+      - TN_ALLOW_URL_FETCH=${TN_ALLOW_URL_FETCH:-false}
+    volumes:
+      - models:/data/models
+      - tmp:/data/tmp
+    ports:
+      - "127.0.0.1:${TN_PORT:-8100}:8100"
+    networks:
+      - internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  models:
+  tmp:
