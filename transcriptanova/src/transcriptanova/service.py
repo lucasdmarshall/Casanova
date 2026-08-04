@@ -10,6 +10,7 @@ it can spend your CPU/GPU on arbitrary audio.
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, Form, UploadFile
@@ -17,19 +18,37 @@ from pydantic import BaseModel, Field
 
 from .tools import TRANSCRIBE_SCHEMA, Toolset
 
+log = logging.getLogger("transcriptanova.service")
+
 _toolset = Toolset.from_env()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Eager-load the Whisper model at boot so the first agent call is not
-    # paying for a multi-hundred-MB download. Failures are non-fatal here —
-    # /health still reports, and the first transcribe surfaces the error.
+    # Eager-load (and, on first ever boot, download) the model here so the
+    # first agent call is not paying for a multi-hundred-MB download. This
+    # awaits before serving, so the container is not "up" until the model is
+    # ready — the weights land in the persistent TN_DOWNLOAD_ROOT volume, so
+    # this cost is paid once, not per restart.
+    #
+    # A failure is logged loudly rather than swallowed: the old silent
+    # `except: pass` let the service come up "healthy" and then fail every
+    # transcription. We still yield so /health can report the broken engine
+    # and the first transcribe returns a real error, but the log makes the
+    # cause obvious.
+    info = _toolset.engine.info()
+    log.info("loading model: %s", info)
     try:
-        if hasattr(_toolset.engine, "_load"):
-            _toolset.engine._load()  # type: ignore[attr-defined]
-    except Exception:  # noqa: BLE001
-        pass
+        _toolset.engine.ensure_loaded()
+        log.info("model ready: %s", _toolset.engine.info())
+    except Exception as exc:  # noqa: BLE001
+        log.error(
+            "model failed to load (%s: %s) — the service will start but "
+            "transcription will error until this is fixed. Try: "
+            "docker compose run --rm transcriptanova python -m transcriptanova.prefetch",
+            type(exc).__name__,
+            exc,
+        )
     yield
 
 

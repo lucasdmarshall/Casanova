@@ -57,9 +57,28 @@ cd transcriptanova
 docker compose up -d --build
 ```
 
+The Whisper model downloads **automatically on first boot** — the container
+awaits the download before it reports healthy, and the weights land in the
+`models` volume, so it happens **once** and survives image rebuilds. On CPU,
+the default `base` model is ~140 MB; a first `docker compose up` therefore
+takes a minute or two before `/health` passes.
+
+To pre-download (or just verify the weights are reachable) without starting
+the service:
+
 ```bash
+docker compose run --rm transcriptanova python -m transcriptanova.prefetch
+```
+
+```bash
+docker compose ps        # STATUS shows "healthy" once the model is loaded
 curl localhost:8100/health
 ```
+
+> **The model lives in the volume, not the image.** `TN_DOWNLOAD_ROOT`
+> (`/data/models`) is a mounted volume, so a model baked into the image at that
+> path would be shadowed by the mount at runtime. Downloading into the volume
+> is what makes it a one-time cost.
 
 **Upload** — preferred for clients and large files:
 

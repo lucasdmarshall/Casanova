@@ -19,6 +19,9 @@ class FakeEngine:
     def info(self) -> dict:
         return {"backend": "fake", "model": "base", "loaded": True}
 
+    def ensure_loaded(self) -> None:
+        pass
+
     async def transcribe(self, audio_path, *, language=None, task="transcribe", timestamps=True, initial_prompt=None):
         self.calls.append(
             {

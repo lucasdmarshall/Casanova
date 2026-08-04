@@ -75,6 +75,15 @@ class WhisperEngine(Protocol):
 
     def info(self) -> dict: ...
 
+    def ensure_loaded(self) -> None:
+        """Download (if needed) and load the model weights now.
+
+        Callers use this to pay the one-time download cost up front — at
+        container boot or via the prefetch command — instead of on the first
+        transcription. Idempotent; raises :class:`EngineError` on failure.
+        """
+        ...
+
 
 class EngineError(RuntimeError):
     """Raised when a backend cannot load or decode."""
@@ -96,6 +105,9 @@ class FasterWhisperEngine:
             "compute_type": self.config.compute_type,
             "loaded": self._model is not None,
         }
+
+    def ensure_loaded(self) -> None:
+        self._load()
 
     def _load(self):
         if self._model is not None:
@@ -213,6 +225,9 @@ class OpenAIWhisperEngine:
             "device": self.config.device,
             "loaded": self._model is not None,
         }
+
+    def ensure_loaded(self) -> None:
+        self._load()
 
     def _load(self):
         if self._model is not None:
