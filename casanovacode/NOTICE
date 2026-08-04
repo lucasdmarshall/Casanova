@@ -1,0 +1,17 @@
+Casanovacode
+Copyright 2026 Lucas D Marshall (Kaung Myat San)
+
+This product includes software developed by Lucas D Marshall (Kaung Myat San).
+
+--------------------------------------------------------------------------------
+
+This product depends on software from third parties, each under its own license:
+
+  - docker (Apache-2.0)           https://github.com/docker/docker-py
+  - FastAPI (MIT)                 https://github.com/fastapi/fastapi
+  - uvicorn (BSD-3-Clause)        https://github.com/encode/uvicorn
+  - mcp (MIT)                     https://github.com/modelcontextprotocol/python-sdk
+
+Sandbox language images (python, node, bash, and any added via CCODE_IMAGES)
+are pulled at runtime from their upstream registries and are not bundled. Each
+carries its own license.

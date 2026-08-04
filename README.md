@@ -10,9 +10,10 @@ Casanova is a growing collection of agent tools you run on your own machine.
 `web_search` and `web_fetch` replace hosted agent web tools — search against
 your own [SearXNG](https://github.com/searxng/searxng), fetch through a
 hardened perimeter you control. [`transcriptanova/`](transcriptanova/) adds
-free open-source speech-to-text via Whisper, and
-[`casanovapdf/`](casanovapdf/) reads, parses and builds PDFs. Same principle
-every time: self-hosted, key-free, and built to be inspected.
+free open-source speech-to-text via Whisper, [`casanovapdf/`](casanovapdf/)
+reads, parses and builds PDFs, and [`casanovacode/`](casanovacode/) runs code
+in a Docker sandbox. Same principle every time: self-hosted, key-free, and
+built to be inspected.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
@@ -33,6 +34,7 @@ every time: self-hosted, key-free, and built to be inspected.
 | **`pdf_read`** | ✅ shipped | Extract a PDF's text + metadata — [`casanovapdf/`](casanovapdf/) |
 | **`pdf_info`** | ✅ shipped | Parse a PDF's structure: pages, outline, form fields — [`casanovapdf/`](casanovapdf/) |
 | **`pdf_create`** | ✅ shipped | Build a PDF from Markdown, plain text, or HTML — [`casanovapdf/`](casanovapdf/) |
+| **`execute_code`** | ✅ shipped | Run code in a throwaway Docker sandbox — [`casanovacode/`](casanovacode/) |
 | _more_ | 🚧 planned | The hub is designed to grow — additional agent tools land here over time |
 
 Every tool that fetches an attacker-influenceable URL routes through

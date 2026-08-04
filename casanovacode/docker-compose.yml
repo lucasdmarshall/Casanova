@@ -1,0 +1,52 @@
+# Casanovacode — sandboxed code execution for agents (HTTP + MCP).
+#
+# ┌─ SECURITY — READ THIS ──────────────────────────────────────────────────┐
+# │ This service mounts the host Docker socket so it can launch sandbox       │
+# │ containers. Access to that socket is ROOT-EQUIVALENT on the host. The     │
+# │ service is therefore a privileged component: it is bound to loopback      │
+# │ below and MUST stay behind your own auth. Never expose port 8300 to an    │
+# │ untrusted network. The code submitted to it is sandboxed; this service    │
+# │ is not.                                                                    │
+# └──────────────────────────────────────────────────────────────────────────┘
+#
+# The sandbox images (python/node/bash) are pulled by the host daemon on first
+# use. Pre-pull them to avoid a first-call delay:
+#
+#   docker pull python:3.12-slim && docker pull node:20-slim && docker pull bash:5
+
+name: casanovacode
+
+services:
+  casanovacode:
+    build:
+      context: ..
+      dockerfile: casanovacode/Dockerfile
+    restart: unless-stopped
+    environment:
+      - CCODE_TIMEOUT=${CCODE_TIMEOUT:-30}
+      - CCODE_MAX_TIMEOUT=${CCODE_MAX_TIMEOUT:-120}
+      - CCODE_MEMORY=${CCODE_MEMORY:-256m}
+      - CCODE_CPUS=${CCODE_CPUS:-1.0}
+      - CCODE_PIDS_LIMIT=${CCODE_PIDS_LIMIT:-128}
+      # Executed code gets no network unless you flip this on a trusted host.
+      - CCODE_ALLOW_NETWORK=${CCODE_ALLOW_NETWORK:-false}
+      # Add languages without a rebuild, e.g.:
+      # CCODE_IMAGES={"go":{"image":"golang:1.22-alpine","cmd":["go","run","/workspace/main.go"],"filename":"main.go"}}
+      - CCODE_IMAGES=${CCODE_IMAGES:-}
+    volumes:
+      # The socket that makes this service privileged. Read-only mount is a
+      # small speed bump, not real protection — treat the service as trusted.
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "127.0.0.1:${CCODE_PORT:-8300}:8300"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8300/health',timeout=5).status==200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
