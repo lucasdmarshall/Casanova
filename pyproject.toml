@@ -21,6 +21,9 @@ dependencies = [
     "httpx>=0.28",
     "trafilatura>=2.0",
     "pypdf>=5.0",
+    # Shared SSRF guard. Repo-local package (web-tools/casanova-core), not on
+    # PyPI — install it first: pip install -e casanova-core
+    "casanova-core>=0.1",
 ]
 
 [project.optional-dependencies]

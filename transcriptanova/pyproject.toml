@@ -28,6 +28,9 @@ classifiers = [
 dependencies = [
     "faster-whisper>=1.1",
     "httpx>=0.28",
+    # The shared SSRF guard + safe downloader. audio_url fetches go through
+    # this so the tool cannot re-open the egress hole every URL fetcher risks.
+    "casanova-core>=0.1",
 ]
 
 [project.optional-dependencies]

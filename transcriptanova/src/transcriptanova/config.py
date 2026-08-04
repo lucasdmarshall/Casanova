@@ -81,12 +81,19 @@ class TranscribeConfig:
     # VAD filter drops long silences before decoding (faster-whisper only).
     vad_filter: bool = True
 
-    # Allow fetching audio from http(s) URLs. Off by default until the
-    # deployment has an SSRF perimeter in front of outbound fetches.
+    # Allow fetching audio from http(s) URLs. Off by default. When on, the
+    # fetch goes through casanova-core's safe_download — resolve-then-pin,
+    # every redirect hop re-validated, streamed and size-capped — so enabling
+    # it does not open an SSRF hole the way a bare httpx.get would.
     allow_url_fetch: bool = False
-
-    # URL fetch timeouts / size (only used when allow_url_fetch is on).
     url_timeout: float = 30.0
+
+    # Allow transcribing a local file the caller names by path. This is the
+    # primary use of the tool run locally (MCP over stdio, or a loopback HTTP
+    # service): "transcribe /home/me/recording.mp3". But over a network-exposed
+    # HTTP service, audio_path lets any caller name any file on the box, so set
+    # TN_ALLOW_LOCAL_PATH=false there and use upload / base64 instead.
+    allow_local_path: bool = True
 
     @classmethod
     def from_env(cls) -> "TranscribeConfig":
@@ -108,4 +115,5 @@ class TranscribeConfig:
             vad_filter=_env_bool("TN_VAD_FILTER", cls.vad_filter),
             allow_url_fetch=_env_bool("TN_ALLOW_URL_FETCH", cls.allow_url_fetch),
             url_timeout=_env_float("TN_URL_TIMEOUT", cls.url_timeout),
+            allow_local_path=_env_bool("TN_ALLOW_LOCAL_PATH", cls.allow_local_path),
         )

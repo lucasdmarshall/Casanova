@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
-import httpx
+from casanova_core import BlockedURL, DownloadError, safe_download
 
 from .config import TranscribeConfig
 from .engine import EngineError, WhisperEngine, build_engine, write_temp_audio
@@ -166,6 +166,13 @@ class Toolset:
             return path, filename or path.name, True
 
         if audio_path:
+            if not self.config.allow_local_path:
+                raise EngineError(
+                    "audio_path is disabled on this server. It lets a caller name "
+                    "any file on the host, which is unsafe over a network-exposed "
+                    "service. Use a multipart upload or audio_base64 instead, or "
+                    "set TN_ALLOW_LOCAL_PATH=true if this server is trusted/local."
+                )
             path = Path(audio_path).expanduser()
             if not path.is_file():
                 raise EngineError(f"audio file not found: {path}")
@@ -194,28 +201,31 @@ class Toolset:
                 "audio_url is disabled. Set TN_ALLOW_URL_FETCH=true on a "
                 "trusted network, or upload/path the file instead."
             )
-        parsed = urlparse(audio_url)
-        if parsed.scheme not in {"http", "https"}:
-            raise EngineError("audio_url must be http or https")
-        if parsed.username or parsed.password:
-            raise EngineError("credentials in audio_url are not allowed")
 
-        async with httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=self.config.url_timeout,
-        ) as client:
-            response = await client.get(audio_url)
-            response.raise_for_status()
-            data = response.content
-        if len(data) > self.config.max_bytes:
-            raise EngineError(
-                f"audio exceeds TN_MAX_BYTES ({self.config.max_bytes} bytes)"
+        # The fetch goes through casanova-core's safe_download rather than a
+        # bare httpx.get: it runs the URL and every redirect hop through the
+        # SSRF guard (so a public URL that 302s to 169.254.169.254 is rejected
+        # at the hop) and streams with a hard byte cap, so max_bytes bounds
+        # memory during the download instead of after it.
+        try:
+            result = await safe_download(
+                audio_url,
+                max_bytes=self.config.max_bytes,
+                timeout=self.config.url_timeout,
             )
+        except BlockedURL as exc:
+            raise EngineError(f"audio_url blocked: {exc}") from exc
+        except DownloadError as exc:
+            raise EngineError(f"audio_url download failed: {exc}") from exc
+
+        if result.truncated:
+            raise EngineError(
+                f"audio_url exceeds TN_MAX_BYTES ({self.config.max_bytes} bytes)"
+            )
+
+        parsed = urlparse(audio_url)
         name = filename or os.path.basename(parsed.path) or "remote-audio"
-        path = write_temp_audio(
-            data,
-            suffix=_suffix_for(name, response.headers.get("content-type")),
-        )
+        path = write_temp_audio(result.content, suffix=_suffix_for(name, result.content_type))
         return path, audio_url, True
 
     async def transcribe(
@@ -254,9 +264,10 @@ class Toolset:
             payload["error"] = None
             return payload
         except EngineError as exc:
+            # safe_download's BlockedURL / DownloadError are already re-raised
+            # as EngineError inside _resolve_to_path, so this one clause covers
+            # bad sources, blocked URLs, and download failures alike.
             return _envelope(error=str(exc), task=task, source=audio_path or audio_url or filename)
-        except httpx.HTTPError as exc:
-            return _envelope(error=f"download failed: {exc}", task=task, source=audio_url)
         except Exception as exc:  # noqa: BLE001 — agent gets a body, not a 500
             log.exception("transcription failed")
             return _envelope(error=f"transcription failed: {exc}", task=task)

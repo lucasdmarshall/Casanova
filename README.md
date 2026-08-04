@@ -31,6 +31,12 @@ self-hosted, key-free, and built to be inspected.
 | **`transcribe`** | 🚧 scaffold | Free open-source Whisper STT — [`transcriptanova/`](transcriptanova/) |
 | _more_ | 🚧 planned | The hub is designed to grow — additional agent tools land here over time |
 
+Every tool that fetches an attacker-influenceable URL routes through
+[`casanova-core`](casanova-core/) — one shared SSRF guard, so a new tool cannot
+quietly re-open the egress hole. That is not hypothetical: the transcription
+tool first shipped a URL fetch with no perimeter at all; wiring it to the shared
+guard is what closed it.
+
 ---
 
 ## Why

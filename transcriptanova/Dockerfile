@@ -7,8 +7,15 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY pyproject.toml README.md LICENSE NOTICE requirements.txt ./
-COPY src ./src
+# Build context is the repo root (see docker-compose.yml), so paths are
+# repo-relative. Install the shared SSRF guard first, so the tool install
+# below sees casanova-core already satisfied instead of hitting PyPI.
+COPY casanova-core ./casanova-core
+RUN pip install --no-cache-dir ./casanova-core
+
+COPY transcriptanova/pyproject.toml transcriptanova/README.md \
+     transcriptanova/LICENSE transcriptanova/NOTICE transcriptanova/requirements.txt ./
+COPY transcriptanova/src ./src
 
 RUN pip install --no-cache-dir . "uvicorn[standard]" "fastapi" "python-multipart" "mcp"
 

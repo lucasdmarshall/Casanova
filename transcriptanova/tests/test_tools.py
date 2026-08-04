@@ -138,6 +138,100 @@ def test_write_temp_audio_roundtrip(tmp_path: Path, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_url_fetch_routes_through_the_ssrf_guard(monkeypatch):
+    """A blocked audio_url comes back as an error envelope, not an exception.
+
+    The block itself is casanova-core's job (and is tested there); here we
+    prove transcriptanova actually calls it and surfaces the refusal.
+    """
+    from casanova_core import BlockedURL
+    import transcriptanova.tools as tools_module
+
+    async def fake_download(url, **kwargs):
+        raise BlockedURL("169.254.169.254 is not globally routable")
+
+    monkeypatch.setattr(tools_module, "safe_download", fake_download)
+
+    toolset = Toolset(config=TranscribeConfig(allow_url_fetch=True))
+    toolset.engine = FakeEngine()
+    result = await toolset.transcribe(audio_url="http://169.254.169.254/a.wav")
+    assert result["text"] is None
+    assert "blocked" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_url_fetch_happy_path_uses_downloaded_bytes(monkeypatch):
+    from casanova_core import DownloadResult
+    import transcriptanova.tools as tools_module
+
+    async def fake_download(url, **kwargs):
+        return DownloadResult(
+            content=b"RIFFfake-wav-bytes",
+            final_url=url,
+            status=200,
+            content_type="audio/wav",
+            truncated=False,
+            redirects=[],
+        )
+
+    monkeypatch.setattr(tools_module, "safe_download", fake_download)
+
+    toolset = Toolset(config=TranscribeConfig(allow_url_fetch=True))
+    fake = FakeEngine()
+    toolset.engine = fake
+    result = await toolset.transcribe(audio_url="https://example.com/clip.wav")
+    assert result["error"] is None
+    assert result["text"] == "hello world"
+    assert len(fake.calls) == 1  # the engine was handed the temp file
+
+
+@pytest.mark.asyncio
+async def test_url_fetch_truncation_is_reported(monkeypatch):
+    from casanova_core import DownloadResult
+    import transcriptanova.tools as tools_module
+
+    async def fake_download(url, **kwargs):
+        return DownloadResult(
+            content=b"x" * 10,
+            final_url=url,
+            status=200,
+            content_type="audio/wav",
+            truncated=True,  # safe_download hit the byte cap mid-stream
+            redirects=[],
+        )
+
+    monkeypatch.setattr(tools_module, "safe_download", fake_download)
+
+    toolset = Toolset(config=TranscribeConfig(allow_url_fetch=True, max_bytes=10))
+    toolset.engine = FakeEngine()
+    result = await toolset.transcribe(audio_url="https://example.com/big.wav")
+    assert result["error"]
+    assert "TN_MAX_BYTES" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_local_path_can_be_disabled(tmp_path: Path):
+    audio = tmp_path / "clip.wav"
+    audio.write_bytes(b"x" * 10)
+    toolset = Toolset(config=TranscribeConfig(allow_local_path=False))
+    toolset.engine = FakeEngine()
+    result = await toolset.transcribe(audio_path=str(audio))
+    assert result["error"]
+    assert "TN_ALLOW_LOCAL_PATH" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_local_path_allowed_by_default(tmp_path: Path):
+    audio = tmp_path / "clip.wav"
+    audio.write_bytes(b"x" * 10)
+    toolset = Toolset(config=TranscribeConfig())
+    toolset.engine = FakeEngine()
+    result = await toolset.transcribe(audio_path=str(audio))
+    assert result["error"] is None
+    assert result["text"] == "hello world"
+
+
+@pytest.mark.asyncio
 async def test_missing_source_returns_envelope():
     toolset = Toolset(config=TranscribeConfig())
     toolset.engine = FakeEngine()

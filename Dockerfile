@@ -7,6 +7,12 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# Shared SSRF guard first, so `pip install .` sees casanova-core already
+# satisfied and never reaches for a (non-existent) PyPI release. The build
+# context is the repo root, so casanova-core/ is in scope.
+COPY casanova-core ./casanova-core
+RUN pip install --no-cache-dir ./casanova-core
+
 COPY pyproject.toml ./
 COPY src ./src
 

@@ -4,6 +4,10 @@
 faster-whisper>=1.1
 httpx>=0.28
 
+# Shared SSRF guard + safe downloader (repo-local package).
+# From this directory: pip install -e ../../casanova-core
+casanova-core>=0.1
+
 # HTTP service
 fastapi>=0.115
 uvicorn[standard]>=0.30
