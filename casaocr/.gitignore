@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.env
+models/
+*.png
+*.jpg
+*.jpeg
+*.pdf
+!tests/fixtures/*
+!tests/fixtures/.gitkeep

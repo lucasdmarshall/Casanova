@@ -1,0 +1,28 @@
+CasaOCR
+Copyright 2026 Lucas D Marshall (Kaung Myat San)
+
+This product includes software developed by Lucas D Marshall (Kaung Myat San).
+
+--------------------------------------------------------------------------------
+
+This product depends on software from third parties, each under its own license:
+
+  - PaddleOCR (Apache-2.0)         https://github.com/PaddlePaddle/PaddleOCR
+  - PaddlePaddle (Apache-2.0)      https://github.com/PaddlePaddle/Paddle
+  - Tesseract (Apache-2.0)         https://github.com/tesseract-ocr/tesseract
+  - pytesseract (Apache-2.0)       https://github.com/madmaze/pytesseract
+  - Pillow (HPND/MIT-CMU)          https://github.com/python-pillow/Pillow
+  - NumPy (BSD-3-Clause)           https://github.com/numpy/numpy
+  - OpenCV (Apache-2.0)            https://github.com/opencv/opencv-python
+  - pdf2image (MIT)                https://github.com/Belval/pdf2image
+  - httpx (BSD-3-Clause)           https://github.com/encode/httpx
+  - FastAPI (MIT)                  https://github.com/fastapi/fastapi
+  - uvicorn (BSD-3-Clause)         https://github.com/encode/uvicorn
+  - mcp (MIT)                      https://github.com/modelcontextprotocol/python-sdk
+
+Scanned-PDF rasterization uses the poppler utilities (GPL-2.0), invoked as an
+external program (not linked). Tesseract language data and PaddleOCR model
+weights are downloaded/installed separately under their own licenses.
+
+It also depends on casanova-core, the shared SSRF guard for the Casanova tool
+hub, distributed in the same repository under the Apache License 2.0.

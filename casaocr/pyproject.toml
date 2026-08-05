@@ -1,0 +1,70 @@
+[project]
+name = "casaocr"
+version = "0.1.0"
+description = "Self-hosted OCR for AI agents — image & scanned-PDF text extraction over HTTP and MCP"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Lucas D Marshall (Kaung Myat San)" }]
+keywords = [
+    "llm",
+    "agent",
+    "mcp",
+    "ocr",
+    "paddleocr",
+    "tesseract",
+    "text-extraction",
+    "self-hosted",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Text Processing",
+]
+dependencies = [
+    "pillow>=10.0",
+    "numpy>=1.26",
+    "opencv-python-headless>=4.9",
+    "pdf2image>=1.17",
+    "httpx>=0.28",
+    # Shared SSRF guard + safe downloader. file_url fetches go through this so
+    # the tool cannot re-open the egress hole every URL fetcher risks.
+    "casanova-core>=0.1",
+]
+
+[project.optional-dependencies]
+# Recognition engines are extras so the base install stays light and the tests
+# run against a fake engine. The Docker image bakes paddle + tesseract in.
+# Pinned to the 2.x line: stable classic API (PaddleOCR().ocr()), lighter deps.
+# 3.x is the paddlex-based rewrite — different API and much heavier; a later
+# opt-in, not the v1 default.
+paddle = ["paddleocr>=2.7,<3.0", "paddlepaddle>=2.6,<3.0"]
+tesseract = ["pytesseract>=0.3.10"]
+service = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "python-multipart>=0.0.9"]
+mcp = ["mcp>=2.0"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "pillow>=10.0", "numpy>=1.26"]
+
+[project.urls]
+Homepage = "https://github.com/lucasdmarshall/Casanova"
+Repository = "https://github.com/lucasdmarshall/Casanova"
+Issues = "https://github.com/lucasdmarshall/Casanova/issues"
+
+[project.scripts]
+casaocr-mcp = "casaocr.mcp_server:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"

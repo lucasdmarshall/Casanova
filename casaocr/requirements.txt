@@ -1,0 +1,28 @@
+# Runtime — pin ranges; install with: pip install -e ".[paddle,tesseract,service,mcp]"
+# Or: pip install -r requirements.txt
+
+pillow>=10.0
+numpy>=1.26
+opencv-python-headless>=4.9
+pdf2image>=1.17
+httpx>=0.28
+
+# Shared SSRF guard + safe downloader (repo-local package).
+# From this directory: pip install -e ../casanova-core
+casanova-core>=0.1
+
+# Recognition engines (default paddle; tesseract fallback).
+# Tesseract also needs the system binary: apt-get install tesseract-ocr
+paddleocr>=2.7,<3.0
+paddlepaddle>=2.6,<3.0
+pytesseract>=0.3.10
+
+# Scanned-PDF rasterization also needs poppler: apt-get install poppler-utils
+
+# HTTP service
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+
+# MCP front end (Claude Desktop / Cursor / agent runtimes)
+mcp>=2.0
