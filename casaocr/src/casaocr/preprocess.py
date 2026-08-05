@@ -70,4 +70,49 @@ def preprocess_image(image):
         return image
 
 
-__all__ = ["preprocess_image"]
+def segment_lines(image, *, min_height: int = 8) -> list[tuple[int, int, int, int]]:
+    """Split a page into horizontal text-line boxes via a projection profile.
+
+    Cheap, model-free line detection for the handwriting engine: binarize, sum
+    ink per row, and cut the page into bands wherever the ink stops. Returns
+    full-width boxes ``(x0, y0, x1, y1)`` top-to-bottom. On any failure (or an
+    image with no clear rows) it returns a single box covering the whole image,
+    so the caller always has at least one line to recognize.
+    """
+    try:
+        import cv2
+        import numpy as np
+    except ImportError:  # pragma: no cover
+        arr = getattr(image, "shape", None)
+        if arr:
+            return [(0, 0, int(image.shape[1]), int(image.shape[0]))]
+        return []
+
+    try:
+        arr = np.array(image)
+        gray = cv2.cvtColor(arr[:, :, :3], cv2.COLOR_RGB2GRAY) if arr.ndim == 3 else arr
+        h, w = gray.shape[:2]
+        binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+        row_ink = (binary > 0).sum(axis=1)
+        threshold = max(1, w // 100)  # a row counts as "text" above ~1% width
+
+        boxes: list[tuple[int, int, int, int]] = []
+        in_line = False
+        start = 0
+        for y in range(h):
+            if row_ink[y] > threshold and not in_line:
+                in_line, start = True, y
+            elif row_ink[y] <= threshold and in_line:
+                in_line = False
+                if y - start >= min_height:
+                    boxes.append((0, start, w, y))
+        if in_line and h - start >= min_height:
+            boxes.append((0, start, w, h))
+        return boxes or [(0, 0, w, h)]
+    except Exception as exc:  # noqa: BLE001
+        log.warning("line segmentation failed, using whole image: %s", exc)
+        arr = np.array(image)
+        return [(0, 0, int(arr.shape[1]), int(arr.shape[0]))]
+
+
+__all__ = ["preprocess_image", "segment_lines"]

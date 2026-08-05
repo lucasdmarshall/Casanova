@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="casaocr", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="casaocr", version="0.2.0", lifespan=lifespan)
 
 
 class OcrRequest(BaseModel):
@@ -51,6 +51,17 @@ class OcrRequest(BaseModel):
     engine: str | None = None
     preprocess: bool | None = None
     detail: str = Field("markdown", pattern="^(markdown|layout)$")
+
+
+class FormRequest(BaseModel):
+    """JSON body for form/invoice extraction."""
+
+    file_path: str | None = None
+    file_url: str | None = None
+    file_base64: str | None = None
+    languages: list[str] | None = None
+    engine: str | None = None
+    templates: dict | None = None
 
 
 @app.get("/health")
@@ -97,3 +108,27 @@ async def ocr_read_upload(
         preprocess=preprocess,
         detail=detail,
     )
+
+
+@app.post("/form_extract")
+async def form_extract(request: FormRequest) -> dict:
+    return await _toolset.extract(
+        file_path=request.file_path,
+        file_url=request.file_url,
+        file_base64=request.file_base64,
+        languages=request.languages,
+        engine=request.engine,
+        templates=request.templates,
+    )
+
+
+@app.post("/form_extract/upload")
+async def form_extract_upload(
+    file: UploadFile = File(...),
+    languages: str | None = Form(None),
+    engine: str | None = Form(None),
+) -> dict:
+    """Multipart upload for form/invoice extraction."""
+    data = await file.read()
+    langs = [s.strip() for s in languages.split(",")] if languages else None
+    return await _toolset.extract(file_bytes=data, languages=langs, engine=engine)

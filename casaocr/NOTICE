@@ -11,6 +11,13 @@ This product depends on software from third parties, each under its own license:
   - PaddlePaddle (Apache-2.0)      https://github.com/PaddlePaddle/Paddle
   - Tesseract (Apache-2.0)         https://github.com/tesseract-ocr/tesseract
   - pytesseract (Apache-2.0)       https://github.com/madmaze/pytesseract
+
+Handwriting (the optional trocr engine) additionally uses:
+
+  - Transformers (Apache-2.0)      https://github.com/huggingface/transformers
+  - PyTorch (BSD-3-Clause)         https://github.com/pytorch/pytorch
+  - TrOCR model weights are released by Microsoft (MIT) and downloaded at
+    runtime, not bundled.  https://huggingface.co/microsoft/trocr-base-handwritten
   - Pillow (HPND/MIT-CMU)          https://github.com/python-pillow/Pillow
   - NumPy (BSD-3-Clause)           https://github.com/numpy/numpy
   - OpenCV (Apache-2.0)            https://github.com/opencv/opencv-python

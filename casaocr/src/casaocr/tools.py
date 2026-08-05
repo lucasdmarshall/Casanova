@@ -17,6 +17,7 @@ from casanova_core import BlockedURL, DownloadError, safe_download
 
 from .config import ENGINES, OcrConfig
 from .engines import EngineError, OcrEngine, build_engine
+from .extract import extract_form
 from .preprocess import preprocess_image
 from .render import OcrPage, blocks_to_text, pages_to_markdown
 
@@ -79,6 +80,63 @@ OCR_READ_SCHEMA = {
 }
 
 
+FORM_EXTRACT_SCHEMA = {
+    "name": "form_extract",
+    "description": (
+        "Pull structured data out of a form, invoice, or receipt image/PDF: "
+        "labelled fields (total, subtotal, tax, invoice number, date) and a "
+        "best-effort line-item table. Use this when you need *values*, not just "
+        "the raw text — e.g. 'what is the total on this invoice'.\n\n"
+        "Provide one source: file_path, file_url (if enabled), or file_base64. "
+        "Runs OCR, then extracts by layout and pattern. Pass templates to add or "
+        "override fields for a known document shape, e.g. "
+        '{"po_number": ["po #", "purchase order"]}. Returns the fields, the '
+        "table rows, and the underlying text.\n\n"
+        "This is rule/layout-based extraction (CPU, self-hosted); it is strong "
+        "on typical invoices and weaker on unusual layouts."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "file_path": {"type": "string", "description": "Local image or PDF path."},
+            "file_url": {"type": "string", "description": "http(s) URL (if URL fetch enabled)."},
+            "file_base64": {"type": "string", "description": "Base64 image or PDF bytes."},
+            "languages": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Language hints, e.g. [\"en\"].",
+            },
+            "engine": {
+                "type": "string",
+                "enum": list(ENGINES),
+                "description": "OCR engine to read the document with.",
+            },
+            "templates": {
+                "type": "object",
+                "description": "Extra/override fields: {name: [anchor phrase, ...]}.",
+                "additionalProperties": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+        "additionalProperties": False,
+    },
+}
+
+
+def _form_envelope(**overrides) -> dict:
+    envelope = {
+        "fields": {},
+        "table": [],
+        "text": None,
+        "page_count": None,
+        "engine": None,
+        "languages": None,
+        "source": None,
+        "error": None,
+    }
+    envelope.update(overrides)
+    return envelope
+
+
 def _envelope(**overrides) -> dict:
     envelope = {
         "text": None,
@@ -111,10 +169,10 @@ class Toolset:
         return cls(config=OcrConfig.from_env())
 
     def schemas(self) -> list[dict]:
-        return [OCR_READ_SCHEMA]
+        return [OCR_READ_SCHEMA, FORM_EXTRACT_SCHEMA]
 
     def health(self) -> dict:
-        return {"status": "ok", "version": "0.1.0", "engine": self.engine.info()}
+        return {"status": "ok", "version": "0.2.0", "engine": self.engine.info()}
 
     # --- source resolution ---
 
@@ -316,5 +374,65 @@ class Toolset:
             log.exception("ocr_read failed")
             return _envelope(error=f"ocr_read failed: {exc}", source=source, languages=langs)
 
+    async def extract(
+        self,
+        *,
+        file_path: str | None = None,
+        file_url: str | None = None,
+        file_base64: str | None = None,
+        file_bytes: bytes | None = None,
+        languages: list[str] | None = None,
+        engine: str | None = None,
+        templates: dict | None = None,
+    ) -> dict:
+        import asyncio
 
-__all__ = ["OCR_READ_SCHEMA", "Toolset"]
+        source = file_path or file_url or "upload"
+        langs = languages or self.config.languages
+        eng = self.engine if not engine or engine == self.config.engine else build_engine(
+            self.config, engine
+        )
+        try:
+            data, source = await self._resolve_bytes(
+                file_path=file_path,
+                file_url=file_url,
+                file_base64=file_base64,
+                file_bytes=file_bytes,
+            )
+            # OCR every page, then extract fields per page and merge: a field
+            # takes the first page it is found on; tables concatenate.
+            pages = await asyncio.to_thread(
+                self._recognize, data, engine=eng, languages=langs, preprocess=self.config.preprocess
+            )
+            merged_fields: dict[str, str | None] = {}
+            table: list[list[str]] = []
+            for page in pages:
+                page_result = extract_form(page.blocks, templates=templates)
+                for name, value in page_result["fields"].items():
+                    if value and not merged_fields.get(name):
+                        merged_fields[name] = value
+                    merged_fields.setdefault(name, None)
+                table.extend(page_result.get("table", []))
+
+            text = "\n\n".join(p.text for p in pages).strip()
+            if len(text) > self.config.max_chars:
+                text = text[: self.config.max_chars]
+
+            return _form_envelope(
+                fields=merged_fields,
+                table=table,
+                text=text,
+                page_count=len(pages),
+                engine=eng.info().get("engine"),
+                languages=langs,
+                source=source,
+                error=None,
+            )
+        except EngineError as exc:
+            return _form_envelope(error=str(exc), source=source, languages=langs)
+        except Exception as exc:  # noqa: BLE001
+            log.exception("form_extract failed")
+            return _form_envelope(error=f"form_extract failed: {exc}", source=source, languages=langs)
+
+
+__all__ = ["FORM_EXTRACT_SCHEMA", "OCR_READ_SCHEMA", "Toolset"]

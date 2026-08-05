@@ -10,7 +10,7 @@ from PIL import Image
 
 from casaocr.config import OcrConfig
 from casaocr.engines import OcrBlock
-from casaocr.tools import OCR_READ_SCHEMA, Toolset
+from casaocr.tools import FORM_EXTRACT_SCHEMA, OCR_READ_SCHEMA, Toolset
 
 
 class FakeEngine:
@@ -152,6 +152,34 @@ async def test_url_fetch_routes_through_the_ssrf_guard(monkeypatch):
     r = await ts.read(file_url="http://169.254.169.254/a.png")
     assert r["text"] is None
     assert "blocked" in r["error"]
+
+
+@pytest.mark.asyncio
+async def test_form_extract_from_ocr_blocks():
+    invoice = FakeEngine(blocks=[
+        OcrBlock("Total:", (0, 10, 50, 30), 0.9),
+        OcrBlock("99.99", (120, 10, 180, 30), 0.9),
+    ])
+    ts = _toolset(engine=invoice)
+    r = await ts.extract(file_base64=_png_b64(), languages=["en"])
+    assert r["error"] is None
+    assert r["fields"]["total"] == "99.99"
+    assert r["engine"] == "fake"
+    assert r["source"] == "file_base64"
+
+
+@pytest.mark.asyncio
+async def test_form_extract_schema_present():
+    assert FORM_EXTRACT_SCHEMA["name"] == "form_extract"
+    assert "templates" in FORM_EXTRACT_SCHEMA["input_schema"]["properties"]
+
+
+@pytest.mark.asyncio
+async def test_form_extract_missing_source():
+    ts = _toolset()
+    r = await ts.extract()
+    assert r["error"]
+    assert set(r) >= {"fields", "table", "text", "engine", "source", "error"}
 
 
 @pytest.mark.asyncio

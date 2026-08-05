@@ -251,11 +251,99 @@ class TesseractEngine:
         return blocks
 
 
+class TrOcrEngine:
+    """Handwriting engine (v2) — OpenCV line segmentation + a TrOCR model.
+
+    TrOCR recognizes a single text line, so this segments the page into line
+    boxes first (a cheap projection profile, no extra model) and recognizes each
+    crop. CPU-only by design — it works, but it is slow; anyone who wants speed
+    swaps ``device=gpu`` or a lighter model. torch/transformers are imported
+    lazily so the rest of casaocr never pulls them in.
+    """
+
+    def __init__(self, config) -> None:
+        self.config = config
+        self._processor = None
+        self._model = None
+
+    def info(self) -> dict:
+        return {
+            "engine": "trocr",
+            "device": self.config.device,
+            "model": self.config.trocr_model,
+            "loaded": self._model is not None,
+        }
+
+    def ensure_loaded(self) -> None:
+        self._load()
+
+    def _load(self):
+        if self._model is not None:
+            return
+        try:
+            import torch  # noqa: F401
+            # transformers must be <5 here: 5.x removed the slow-tokenizer
+            # conversion path that older TrOCR checkpoints rely on, so the
+            # processor fails to instantiate. The [handwriting] extra pins it.
+            from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+        except ImportError as exc:
+            raise EngineError(
+                "handwriting needs torch + transformers. "
+                "pip install 'casaocr[handwriting]'"
+            ) from exc
+        log.info("loading TrOCR model=%s device=%s", self.config.trocr_model, self.config.device)
+        self._processor = TrOCRProcessor.from_pretrained(self.config.trocr_model)
+        self._model = VisionEncoderDecoderModel.from_pretrained(self.config.trocr_model)
+        if self.config.device == "gpu":
+            try:
+                self._model = self._model.to("cuda")
+            except Exception as exc:  # noqa: BLE001
+                log.warning("could not move TrOCR to cuda, staying on cpu: %s", exc)
+
+    def _recognize_crop(self, crop) -> str:
+        from PIL import Image
+
+        image = crop if hasattr(crop, "mode") else Image.fromarray(crop)
+        pixel_values = self._processor(images=image.convert("RGB"), return_tensors="pt").pixel_values
+        if self.config.device == "gpu":
+            try:
+                pixel_values = pixel_values.to("cuda")
+            except Exception:  # noqa: BLE001
+                pass
+        ids = self._model.generate(pixel_values, max_new_tokens=256)
+        text = self._processor.batch_decode(ids, skip_special_tokens=True)[0]
+        return (text or "").strip()
+
+    def recognize(self, image, *, languages: list[str]) -> list[OcrBlock]:
+        self._load()
+        from .preprocess import segment_lines
+
+        img = _to_ndarray(image)
+        boxes = segment_lines(img)
+        blocks: list[OcrBlock] = []
+        for (x0, y0, x1, y1) in boxes:
+            crop = img[int(y0):int(y1), int(x0):int(x1)]
+            if crop.size == 0:
+                continue
+            try:
+                text = self._recognize_crop(crop)
+            except Exception as exc:  # noqa: BLE001 — one bad line shouldn't kill the page
+                log.warning("trocr line failed: %s", exc)
+                continue
+            if text:
+                blocks.append(
+                    OcrBlock(text=text, bbox=(float(x0), float(y0), float(x1), float(y1)), confidence=None)
+                )
+        return blocks
+
+
 def build_engine(config, name: str | None = None) -> OcrEngine:
     """Construct the configured (or named) engine."""
     engine = (name or config.engine).lower()
     if engine == "tesseract":
         return TesseractEngine(config)
+    if engine == "trocr":
+        return TrOcrEngine(config)
     return PaddleOcrEngine(config)
 
 
@@ -265,5 +353,6 @@ __all__ = [
     "OcrEngine",
     "PaddleOcrEngine",
     "TesseractEngine",
+    "TrOcrEngine",
     "build_engine",
 ]

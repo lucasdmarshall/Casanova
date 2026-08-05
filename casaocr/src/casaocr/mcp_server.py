@@ -19,12 +19,12 @@ from .tools import Toolset
 
 server = MCPServer(
     name="casaocr",
-    version="0.1.0",
+    version="0.2.0",
     instructions=(
         "Self-hosted OCR, no API keys. Use ocr_read to read the text out of an "
-        "image or a scanned PDF when there is no selectable text to extract. "
-        "Prefer a local file_path when the file is on disk; use file_base64 for "
-        "small files. Returns markdown plus plain text."
+        "image or a scanned PDF; use form_extract to pull structured fields and "
+        "line-item tables out of an invoice, receipt, or form. Prefer a local "
+        "file_path when the file is on disk; use file_base64 for small files."
     ),
 )
 
@@ -72,6 +72,45 @@ async def ocr_read_tool(
         engine=engine,
         preprocess=preprocess,
         detail=detail,
+    )
+
+
+@server.tool(
+    name="form_extract",
+    description=(
+        "Pull structured data out of a form, invoice, or receipt (image or PDF): "
+        "labelled fields (total, subtotal, tax, invoice number, date) and a "
+        "best-effort line-item table. Use when you need values, not just text — "
+        "e.g. 'what is the total on this invoice'. Provide one source: "
+        "file_path, file_url (if enabled), or file_base64. Pass templates to add "
+        "or override fields for a known layout, e.g. {\"po_number\": [\"po #\"]}."
+    ),
+)
+async def form_extract_tool(
+    file_path: str | None = None,
+    file_url: str | None = None,
+    file_base64: str | None = None,
+    languages: list[str] | None = None,
+    engine: str | None = None,
+    templates: dict | None = None,
+) -> dict:
+    """Extract fields and a line-item table from a form/invoice/receipt.
+
+    Args:
+        file_path: Local path to an image or PDF.
+        file_url: http(s) URL (if URL fetch is enabled).
+        file_base64: Base64-encoded image or PDF bytes.
+        languages: Language hints, e.g. ["en"].
+        engine: OCR engine to read the document with.
+        templates: Extra/override fields, {name: [anchor phrase, ...]}.
+    """
+    return await _toolset.extract(
+        file_path=file_path,
+        file_url=file_url,
+        file_base64=file_base64,
+        languages=languages,
+        engine=engine,
+        templates=templates,
     )
 
 

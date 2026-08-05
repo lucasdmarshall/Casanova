@@ -2,7 +2,7 @@
 
 # CasaOCR
 
-**Self-hosted OCR for AI agents — image & scanned-PDF text extraction. No API keys.**
+**Self-hosted OCR for AI agents — text, forms/invoices, and handwriting. No API keys.**
 
 Part of the [Casanova](https://github.com/lucasdmarshall/Casanova) tool hub.
 Pluggable engines — [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)
@@ -98,15 +98,37 @@ docker compose up -d --build
 
 | Engine | When | Notes |
 |---|---|---|
-| **`paddleocr`** (default) | Best accuracy, 80+ languages, returns boxes + confidence | Pinned to the **2.x** classic API; heavier install (baked into the Docker image) |
-| **`tesseract`** | Lightweight, fast, ubiquitous | Needs the `tesseract-ocr` system binary |
+| **`paddleocr`** (default) | Printed text; best accuracy, 80+ languages, boxes + confidence | Pinned to the **2.x** classic API; baked into the Docker image |
+| **`tesseract`** | Printed text; lightweight, fast, ubiquitous | Needs the `tesseract-ocr` system binary |
+| **`trocr`** | **Handwriting** (v2) | OpenCV line segmentation + a TrOCR model; `pip install 'casaocr[handwriting]'`; CPU-runnable but slow. transformers is pinned `<5` |
 
-Override per call with `engine`, or set `COCR_ENGINE`. The `OcrEngine` seam is
-where **v2** drops in handwriting (TrOCR) and VLM backends without touching the
-pipeline.
+Override per call with `engine`, or set `COCR_ENGINE`. A GPU/VLM backend slots in
+behind the same `OcrEngine` seam for anyone who wants it.
 
-> **Scope.** v1 reads **printed/typed** text. Handwriting and form/invoice
-> field-extraction are v2 — a separate, heavier (GPU-friendly) capability.
+---
+
+## Forms & invoices — `form_extract`
+
+Beyond raw text, `form_extract` pulls **structured data** out of an invoice,
+receipt, or form: labelled fields (total, subtotal, tax, invoice number, date)
+and a best-effort line-item table. It runs OCR, then extracts by **layout and
+pattern** on the resulting blocks — pure Python, CPU-cheap, no second model.
+
+```bash
+curl -X POST localhost:8400/form_extract -H 'content-type: application/json' \
+  -d '{"file_path":"/path/to/invoice.png","languages":["en"]}'
+# → {"fields": {"total": "27.50", "tax": "2.50", "invoice_number": "INV-2026-0042", ...},
+#    "table": [["Widget A","2","10.00"], ...]}
+```
+
+Pass `templates` to add or override fields for a known layout, e.g.
+`{"po_number": ["po #", "purchase order"]}`. It is rule/layout-based — strong on
+typical invoices, weaker on unusual layouts (where a GPU VLM, behind the same
+seam, does better).
+
+> **Handwriting** uses the `trocr` engine on either tool: `engine="trocr"`.
+> It is CPU-runnable but slow — one line at a time — and best on real
+> handwriting. GPU users just point torch at CUDA.
 
 ---
 
@@ -116,7 +138,9 @@ pipeline.
 |---|---|
 | `POST /ocr_read` | OCR one file. `file_path` / `file_url` / `file_base64`, `languages`, `engine`, `preprocess`, `detail` |
 | `POST /ocr_read/upload` | Same, multipart file upload |
-| `GET /schemas` | Tool definition, ready for an LLM `tools` array |
+| `POST /form_extract` | Fields + line-item table. Same sources, plus `templates` |
+| `POST /form_extract/upload` | Same, multipart file upload |
+| `GET /schemas` | Tool definitions, ready for an LLM `tools` array |
 | `GET /health` | Liveness + engine info |
 
 Response carries `text`, `markdown`, `pages[]`, `page_count`, `engine`,
@@ -149,7 +173,8 @@ All via environment variable.
 |---|---|---|
 | `COCR_ENGINE` | `paddleocr` | `paddleocr` or `tesseract` |
 | `COCR_LANGUAGES` | `en` | Comma-separated hints, e.g. `en,fr` |
-| `COCR_DEVICE` | `cpu` | `cpu` or `gpu` (PaddleOCR) |
+| `COCR_DEVICE` | `cpu` | `cpu` or `gpu` (PaddleOCR / TrOCR) |
+| `COCR_TROCR_MODEL` | `microsoft/trocr-base-handwritten` | HuggingFace model for the `trocr` engine |
 | `COCR_PREPROCESS` | `true` | Deskew/denoise/binarize before recognition |
 | `COCR_MAX_BYTES` | `26214400` | Cap on an input file (25 MB) |
 | `COCR_MAX_CHARS` | `500000` | Cap on extracted text; flags `truncated` |
@@ -172,10 +197,11 @@ models — it covers reading-order/markdown assembly, source handling, the
 language/engine plumbing, size caps, truncation, and that `file_url` routes
 through the SSRF guard.
 
-Verified end-to-end on a live server (CPU VPS, Docker): both **Tesseract** and
-**PaddleOCR 2.10** read rendered text correctly, layout blocks and metadata
-returned — and preprocessing measurably improved PaddleOCR's accuracy on the
-same input.
+Verified end-to-end on a live CPU server: **Tesseract** and **PaddleOCR 2.10**
+read rendered text correctly (and preprocessing measurably improved PaddleOCR's
+accuracy); **`form_extract`** pulled every field off a rendered invoice
+(`total`/`subtotal` correctly separated); and the **`trocr`** handwriting engine
+recognized a line end-to-end on CPU.
 
 ---
 

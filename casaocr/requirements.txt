@@ -19,6 +19,13 @@ pytesseract>=0.3.10
 
 # Scanned-PDF rasterization also needs poppler: apt-get install poppler-utils
 
+# Handwriting engine (trocr) — optional, heavy. transformers pinned <5 (5.x
+# breaks TrOCR's tokenizer). For CPU, install torch from the CPU wheel index:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+# transformers>=4.40,<5
+# sentencepiece>=0.1.99
+# protobuf>=3.20
+
 # HTTP service
 fastapi>=0.115
 uvicorn[standard]>=0.30

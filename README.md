@@ -37,6 +37,7 @@ inspected.
 | **`pdf_create`** | ✅ shipped | Build a PDF from Markdown, plain text, or HTML — [`casanovapdf/`](casanovapdf/) |
 | **`execute_code`** | ✅ shipped | Run code in a throwaway Docker sandbox — [`casanovacode/`](casanovacode/) |
 | **`ocr_read`** | ✅ shipped | OCR an image or scanned PDF → markdown — [`casaocr/`](casaocr/) |
+| **`form_extract`** | ✅ shipped | Fields + line-item table from an invoice/receipt — [`casaocr/`](casaocr/) |
 | _more_ | 🚧 planned | The hub is designed to grow — additional agent tools land here over time |
 
 Every tool that fetches an attacker-influenceable URL routes through

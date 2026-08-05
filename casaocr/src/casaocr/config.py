@@ -9,10 +9,10 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
-# Engines that ship in v1. Both are permissively licensed (Apache-2.0), which
-# keeps the hub clean. Heavier handwriting/VLM backends arrive in v2 behind the
-# same OcrEngine seam.
-ENGINES = ("paddleocr", "tesseract")
+# Recognition engines. paddleocr/tesseract (v1) are Apache-2.0 printed-text
+# engines; trocr (v2) is the CPU handwriting engine (OpenCV line segmentation +
+# a TrOCR model), an opt-in behind the same OcrEngine seam.
+ENGINES = ("paddleocr", "tesseract", "trocr")
 
 
 def _env_int(name: str, default: int) -> int:
@@ -48,8 +48,12 @@ class OcrConfig:
     # its own code set. English by default.
     languages: list[str] = field(default_factory=lambda: ["en"])
 
-    # cpu | gpu. Only the deep-learning engines (PaddleOCR) use this.
+    # cpu | gpu. Only the deep-learning engines (PaddleOCR, TrOCR) use this.
     device: str = "cpu"
+
+    # Handwriting (trocr engine): the HuggingFace model to load. The default is
+    # trained on handwriting; a printed variant is microsoft/trocr-base-printed.
+    trocr_model: str = "microsoft/trocr-base-handwritten"
 
     # Run the OpenCV preprocessing pipeline (deskew, denoise, binarize) before
     # recognition. The single biggest accuracy lever; on by default.
@@ -88,6 +92,7 @@ class OcrConfig:
             engine=engine,
             languages=_env_list("COCR_LANGUAGES", ["en"]),
             device=device,
+            trocr_model=os.getenv("COCR_TROCR_MODEL", cls.trocr_model).strip() or cls.trocr_model,
             preprocess=_env_bool("COCR_PREPROCESS", cls.preprocess),
             max_bytes=_env_int("COCR_MAX_BYTES", cls.max_bytes),
             max_chars=_env_int("COCR_MAX_CHARS", cls.max_chars),
