@@ -1,0 +1,20 @@
+# Runtime — pin ranges; install with: pip install -e ".[service,mcp]"
+# Or: pip install -r requirements.txt
+
+pypdf>=5.0
+reportlab>=4.0
+# HTML -> PDF (pure-Python, on top of reportlab; no browser engine).
+xhtml2pdf>=0.2.11
+httpx>=0.28
+
+# Shared SSRF guard + safe downloader (repo-local package).
+# From this directory: pip install -e ../hirara-core
+hirara-core>=0.1
+
+# HTTP service
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+
+# MCP front end (Claude Desktop / Cursor / agent runtimes)
+mcp>=2.0

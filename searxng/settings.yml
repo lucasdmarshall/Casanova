@@ -5,7 +5,7 @@
 use_default_settings: true
 
 general:
-  instance_name: "web-tools"
+  instance_name: "hirara-web"
   # No public-facing UI links; this instance exists to serve one API client.
   contact_url: false
   enable_metrics: false
@@ -15,7 +15,7 @@ server:
 
   # The limiter exists to stop strangers abusing a public instance. This one
   # is not published to the internet — it is reachable only from the
-  # web-tools container on the compose network — and the limiter blocks
+  # hirara-web container on the compose network — and the limiter blocks
   # API-shaped requests, so it is off deliberately.
   #
   # If you ever publish this port, turn the limiter back on.
@@ -40,7 +40,7 @@ outgoing:
 
 engines:
   # Google and Bing are left enabled but are expected to fail from a
-  # datacenter IP. web_tools.config.SearchConfig does not request them by
+  # datacenter IP. hiraraweb.config.SearchConfig does not request them by
   # default; re-add them via WT_SEARCH_ENGINES if your host gets away with it.
   - name: wikidata
     disabled: false

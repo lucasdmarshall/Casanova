@@ -42,10 +42,10 @@ hr "Existing compose projects"
 docker ps -a --format '{{.Label "com.docker.compose.project"}}' 2>/dev/null \
     | grep -v '^$' | sort -u || echo "none"
 
-# A project already called web-tools would be adopted by our compose file.
+# A project already called hirara-web would be adopted by our compose file.
 if docker ps -a --format '{{.Label "com.docker.compose.project"}}' 2>/dev/null \
-    | grep -qx 'web-tools'; then
-    echo "WARNING: a compose project named 'web-tools' already exists here."
+    | grep -qx 'hirara-web'; then
+    echo "WARNING: a compose project named 'hirara-web' already exists here."
     echo "         Our deploy would adopt its containers. Rename ours before proceeding."
 fi
 

@@ -3,13 +3,13 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from web_tools.config import RobotsConfig
-from web_tools.robots import RobotsCache, robots_url_for
+from hiraraweb.config import RobotsConfig
+from hiraraweb.robots import RobotsCache, robots_url_for
 
 DISALLOW_ALL = "User-agent: *\nDisallow: /\n"
 ALLOW_ALL = "User-agent: *\nDisallow:\n"
 PARTIAL = "User-agent: *\nDisallow: /private/\nAllow: /private/public.html\n"
-TARGETED = "User-agent: web-tools\nDisallow: /no-bots/\n\nUser-agent: *\nDisallow:\n"
+TARGETED = "User-agent: hirara-web\nDisallow: /no-bots/\n\nUser-agent: *\nDisallow:\n"
 
 
 def cache_returning(status, text, *, config=None, calls=None):
@@ -23,7 +23,7 @@ def cache_returning(status, text, *, config=None, calls=None):
             raise status
         return status, text
 
-    import web_tools.robots as module
+    import hiraraweb.robots as module
 
     module._get_robots_text = fake_get
     return robots
@@ -31,7 +31,7 @@ def cache_returning(status, text, *, config=None, calls=None):
 
 @pytest.fixture(autouse=True)
 def restore_fetcher():
-    import web_tools.robots as module
+    import hiraraweb.robots as module
 
     original = module._get_robots_text
     yield
@@ -78,7 +78,7 @@ async def test_partial_rules_are_path_specific():
 
 
 async def test_rules_targeting_our_token_are_honoured():
-    """A site addressing `web-tools` by name must win over the wildcard group."""
+    """A site addressing `hirara-web` by name must win over the wildcard group."""
     robots = cache_returning(200, TARGETED)
     assert (await robots.check("https://example.com/no-bots/x")).allowed is False
     assert (await robots.check("https://example.com/elsewhere")).allowed is True
@@ -115,7 +115,7 @@ async def test_network_failure_allows():
 
 async def test_blocked_robots_url_allows():
     """robots.txt on a guard-refused host must not wedge the fetch."""
-    from web_tools.guard import BlockedURL
+    from hiraraweb.guard import BlockedURL
 
     robots = cache_returning(BlockedURL("nope"), "")
     assert (await robots.check("https://example.com/page")).allowed is True

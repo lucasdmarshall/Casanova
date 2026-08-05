@@ -1,0 +1,59 @@
+# HiraraOCR — self-hosted OCR for agents (HTTP + MCP).
+#
+# CPU default (PaddleOCR + Tesseract). For GPU, provide a CUDA-enabled
+# paddlepaddle build and set COCR_DEVICE=gpu.
+#
+# Bound to loopback: put your own auth in front before exposing this.
+#
+# PaddleOCR downloads its models on first use; they persist in the `models`
+# volume (mounted at /data, which is HOME), so it happens once.
+
+name: hiraraocr
+
+services:
+  hiraraocr:
+    build:
+      # Context is the repo root so the build can reach the shared
+      # hirara-core package (a sibling of this tool's directory).
+      context: ..
+      dockerfile: hiraraocr/Dockerfile
+    restart: unless-stopped
+    environment:
+      - COCR_ENGINE=${COCR_ENGINE:-paddleocr}
+      - COCR_LANGUAGES=${COCR_LANGUAGES:-en}
+      - COCR_DEVICE=${COCR_DEVICE:-cpu}
+      - COCR_PREPROCESS=${COCR_PREPROCESS:-true}
+      - COCR_MAX_BYTES=${COCR_MAX_BYTES:-26214400}
+      - COCR_MAX_PAGES=${COCR_MAX_PAGES:-50}
+      - COCR_PDF_DPI=${COCR_PDF_DPI:-200}
+      # file_url fetches through hirara-core's SSRF guard; safe to enable on a
+      # trusted network. Off by default.
+      - COCR_ALLOW_URL_FETCH=${COCR_ALLOW_URL_FETCH:-false}
+      # Local-file read (file_path). Off in the image because this service is
+      # network-exposed; use uploads / base64. Flip true only for trusted/local.
+      - COCR_ALLOW_LOCAL_PATH=${COCR_ALLOW_LOCAL_PATH:-false}
+    volumes:
+      - models:/data
+    ports:
+      - "127.0.0.1:${COCR_PORT:-8400}:8400"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8400/health',timeout=5).status==200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # First boot downloads PaddleOCR models; give it room before counting fails.
+      start_period: 300s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  models:

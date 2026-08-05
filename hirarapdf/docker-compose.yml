@@ -1,0 +1,56 @@
+# Hirarapdf — self-hosted PDF read / parse / create for agents (HTTP + MCP).
+#
+# Pure-Python: pypdf reads, reportlab writes. No system packages, no GPU,
+# nothing to download at boot — it is up as soon as the image builds.
+#
+# Bound to loopback: put your own auth in front before exposing this.
+
+name: hirarapdf
+
+services:
+  hirarapdf:
+    build:
+      # Context is the repo root so the build can reach the shared
+      # hirara-core package (a sibling of this tool's directory).
+      context: ..
+      dockerfile: hirarapdf/Dockerfile
+    restart: unless-stopped
+    environment:
+      - CPDF_MAX_BYTES=${CPDF_MAX_BYTES:-26214400}
+      - CPDF_MAX_CHARS=${CPDF_MAX_CHARS:-200000}
+      - CPDF_PAGE_SIZE=${CPDF_PAGE_SIZE:-A4}
+      # pdf_url fetches through hirara-core's SSRF guard (resolve-then-pin,
+      # redirect re-validation, streamed byte cap), so this is safe to enable
+      # on a trusted network. Off by default — opt in per host.
+      - CPDF_ALLOW_URL_FETCH=${CPDF_ALLOW_URL_FETCH:-false}
+      # Local-file read (pdf_path) and write (output_path). Off in the image
+      # because this service is network-exposed by definition; both would let
+      # any caller name any path on the box. Leave false here and use uploads /
+      # base64; flip to true only for a trusted, loopback-only deployment.
+      - CPDF_ALLOW_LOCAL_PATH=${CPDF_ALLOW_LOCAL_PATH:-false}
+    volumes:
+      - output:/data/output
+      - tmp:/data/tmp
+    ports:
+      - "127.0.0.1:${CPDF_PORT:-8200}:8200"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8200/health',timeout=5).status==200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  output:
+  tmp:

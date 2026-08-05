@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from web_tools.search import (
+from hiraraweb.search import (
     SearchError,
     SearchResult,
     _domain_matches,
@@ -39,8 +39,8 @@ async def test_engine_allowlist_is_not_widened_by_categories():
     """
     import httpx
 
-    from web_tools.config import SearchConfig
-    from web_tools.search import SearXNGProvider
+    from hiraraweb.config import SearchConfig
+    from hiraraweb.search import SearXNGProvider
 
     seen: dict = {}
 
@@ -57,7 +57,7 @@ async def test_engine_allowlist_is_not_widened_by_categories():
         kwargs["transport"] = transport
         return original(*args, **kwargs)
 
-    import web_tools.search as search_module
+    import hiraraweb.search as search_module
 
     search_module.httpx.AsyncClient = patched
     try:

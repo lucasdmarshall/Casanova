@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from web_tools.engine_check import format_report, probe_engine
+from hiraraweb.engine_check import format_report, probe_engine
 
 
 def client_returning(handler) -> httpx.AsyncClient:
@@ -133,7 +133,7 @@ async def test_unknown_engine_names_are_not_probed():
     Probing them would report a made-up name as working, which is how a bad
     engine list gets recommended with confidence.
     """
-    from web_tools.engine_check import run_check
+    from hiraraweb.engine_check import run_check
 
     probed: list[str] = []
 
@@ -143,7 +143,7 @@ async def test_unknown_engine_names_are_not_probed():
         probed.append(request.url.params.get("engines"))
         return httpx.Response(200, json={"results": [{"url": "https://a/"}]})
 
-    import web_tools.engine_check as module
+    import hiraraweb.engine_check as module
 
     original = httpx.AsyncClient
     transport = httpx.MockTransport(handler)

@@ -1,0 +1,47 @@
+[project]
+name = "hirara-hub"
+version = "0.1.0"
+description = "Aggregating gateway for the Hirara tool hub — one HTTP + MCP surface over all tools"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Lucas D Marshall (Kaung Myat San)" }]
+keywords = ["llm", "agent", "mcp", "gateway", "tool-hub", "self-hosted"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+]
+dependencies = [
+    "httpx>=0.28",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+mcp = ["mcp>=2.0"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
+
+[project.urls]
+Homepage = "https://github.com/lucasdmarshall/Hirara"
+Repository = "https://github.com/lucasdmarshall/Hirara"
+Issues = "https://github.com/lucasdmarshall/Hirara/issues"
+
+[project.scripts]
+hirara-hub-mcp = "hirara_hub.mcp_server:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"

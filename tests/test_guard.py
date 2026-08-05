@@ -10,7 +10,7 @@ import socket
 
 import pytest
 
-from web_tools.guard import BlockedURL, check_ip, resolve_target
+from hiraraweb.guard import BlockedURL, check_ip, resolve_target
 
 
 def fake_resolver(*addresses: str):

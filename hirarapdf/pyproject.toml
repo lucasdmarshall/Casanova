@@ -1,0 +1,64 @@
+[project]
+name = "hirarapdf"
+version = "0.1.0"
+description = "Self-hosted PDF read / parse / create tools for AI agents — HTTP and MCP"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Lucas D Marshall (Kaung Myat San)" }]
+keywords = [
+    "llm",
+    "agent",
+    "mcp",
+    "pdf",
+    "pdf-parser",
+    "pdf-generation",
+    "pypdf",
+    "reportlab",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Text Processing :: Markup",
+    "Topic :: Office/Business",
+]
+dependencies = [
+    "pypdf>=5.0",
+    "reportlab>=4.0",
+    # HTML -> PDF. Pure-Python, renders on top of reportlab — no browser
+    # engine, no cairo/pango system libraries.
+    "xhtml2pdf>=0.2.11",
+    "httpx>=0.28",
+    # The shared SSRF guard + safe downloader. pdf_url fetches go through this
+    # so the tool cannot re-open the egress hole every URL fetcher risks.
+    "hirara-core>=0.1",
+]
+
+[project.optional-dependencies]
+service = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "python-multipart>=0.0.9"]
+mcp = ["mcp>=2.0"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
+
+[project.urls]
+Homepage = "https://github.com/lucasdmarshall/Hirara"
+Repository = "https://github.com/lucasdmarshall/Hirara"
+Issues = "https://github.com/lucasdmarshall/Hirara/issues"
+
+[project.scripts]
+hirarapdf-mcp = "hirarapdf.mcp_server:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"

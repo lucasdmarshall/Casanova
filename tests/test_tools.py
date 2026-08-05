@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import pytest
 
-from web_tools.cache import Cache
-from web_tools.config import (
+from hiraraweb.cache import Cache
+from hiraraweb.config import (
     CacheConfig,
     FetchConfig,
     ProvenanceConfig,
     RobotsConfig,
     SearchConfig,
 )
-from web_tools.tools import Toolset, wrap_untrusted
+from hiraraweb.tools import Toolset, wrap_untrusted
 
 
 @pytest.fixture
@@ -59,8 +59,8 @@ async def test_blocked_urls_are_never_cached(toolset):
 
 async def test_successful_fetch_envelope_and_caching(toolset, monkeypatch):
     """Happy path: full envelope, then served from cache on a repeat call."""
-    from web_tools import tools as tools_module
-    from web_tools.fetch import FetchResult
+    from hiraraweb import tools as tools_module
+    from hiraraweb.fetch import FetchResult
 
     calls = []
 

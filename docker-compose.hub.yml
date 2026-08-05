@@ -1,18 +1,18 @@
-# The whole Casanova hub, one command:  docker compose -f docker-compose.hub.yml up -d --build
+# The whole Hirara hub, one command:  docker compose -f docker-compose.hub.yml up -d --build
 #
 # Every tool runs in its own container (isolation preserved); only the gateway
 # publishes a port, and only on loopback. Tools talk to each other and to the
-# gateway over the private `casanova` network by service name — so a foreign
+# gateway over the private `hirara` network by service name — so a foreign
 # process occupying a port on the host can never masquerade as a tool.
 #
 # Auth is opt-in: set HUB_TOKEN in the environment (or a .env file) to require a
 # bearer token. Unset = open, which is fine because only 127.0.0.1 is bound.
 #
-# NOTE: casanovacode mounts the Docker socket — that container can control the
+# NOTE: hiraracode mounts the Docker socket — that container can control the
 # host's Docker daemon (root-equivalent). Only run this stack on a host you are
 # comfortable giving that power to; do NOT run it on a shared production box.
 
-name: casanova
+name: hirara
 
 services:
   searxng:
@@ -22,7 +22,7 @@ services:
       - ./searxng:/etc/searxng:rw
     environment:
       - SEARXNG_BASE_URL=http://searxng:8080/
-    networks: [casanova]
+    networks: [hirara]
     cap_drop: [ALL]
     cap_add: [CHOWN, SETGID, SETUID]
 
@@ -35,58 +35,58 @@ services:
       - WT_CACHE_PATH=/data/cache.db
       - WT_FETCH_URL_POLICY=strict
     volumes: [websearch-cache:/data]
-    networks: [casanova]
+    networks: [hirara]
 
-  casanovapdf:
-    build: { context: ., dockerfile: casanovapdf/Dockerfile }
+  hirarapdf:
+    build: { context: ., dockerfile: hirarapdf/Dockerfile }
     restart: unless-stopped
-    networks: [casanova]
+    networks: [hirara]
 
-  casanovacode:
-    build: { context: ., dockerfile: casanovacode/Dockerfile }
+  hiraracode:
+    build: { context: ., dockerfile: hiraracode/Dockerfile }
     restart: unless-stopped
     # Host-root-equivalent — see the note at the top of this file.
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    networks: [casanova]
+    networks: [hirara]
 
-  casaocr:
-    build: { context: ., dockerfile: casaocr/Dockerfile }
+  hiraraocr:
+    build: { context: ., dockerfile: hiraraocr/Dockerfile }
     restart: unless-stopped
     volumes: [ocr-models:/data]  # PaddleOCR weights download once
-    networks: [casanova]
+    networks: [hirara]
 
-  casareader:
-    build: { context: ., dockerfile: casareader/Dockerfile }
+  hirarareader:
+    build: { context: ., dockerfile: hirarareader/Dockerfile }
     restart: unless-stopped
-    networks: [casanova]
+    networks: [hirara]
 
-  # transcriptanova (Whisper STT) is still experimental and heavy (downloads a
+  # hirarastt (Whisper STT) is still experimental and heavy (downloads a
   # model at boot). Uncomment to include it — the gateway will pick it up.
-  # transcriptanova:
-  #   build: { context: ., dockerfile: transcriptanova/Dockerfile }
+  # hirarastt:
+  #   build: { context: ., dockerfile: hirarastt/Dockerfile }
   #   restart: unless-stopped
   #   volumes: [stt-models:/data/models]
-  #   networks: [casanova]
+  #   networks: [hirara]
 
   hub:
-    build: { context: ., dockerfile: casanova-hub/Dockerfile }
+    build: { context: ., dockerfile: hirara-hub/Dockerfile }
     restart: unless-stopped
-    depends_on: [websearch, casanovapdf, casanovacode, casaocr, casareader]
+    depends_on: [websearch, hirarapdf, hiraracode, hiraraocr, hirarareader]
     environment:
       - HUB_TOKEN=${HUB_TOKEN:-}
       - HUB_WEBSEARCH_URL=http://websearch:8000
-      - HUB_CASANOVAPDF_URL=http://casanovapdf:8200
-      - HUB_CASANOVACODE_URL=http://casanovacode:8300
-      - HUB_CASAOCR_URL=http://casaocr:8400
-      - HUB_CASAREADER_URL=http://casareader:8500
-      - HUB_TRANSCRIPTANOVA_URL=http://transcriptanova:8100
+      - HUB_HIRARAPDF_URL=http://hirarapdf:8200
+      - HUB_HIRARACODE_URL=http://hiraracode:8300
+      - HUB_HIRARAOCR_URL=http://hiraraocr:8400
+      - HUB_HIRARAREADER_URL=http://hirarareader:8500
+      - HUB_HIRARASTT_URL=http://hirarastt:8100
     ports:
       - "127.0.0.1:${HUB_PORT:-8080}:8080"
-    networks: [casanova]
+    networks: [hirara]
 
 networks:
-  casanova:
+  hirara:
     driver: bridge
 
 volumes:

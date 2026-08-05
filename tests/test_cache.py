@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from web_tools.cache import Cache, make_key
+from hiraraweb.cache import Cache, make_key
 
 
 @pytest.fixture

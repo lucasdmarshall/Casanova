@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from web_tools.extract import from_html, sanitize, truncate
+from hiraraweb.extract import from_html, sanitize, truncate
 
 ARTICLE = """
 <html><head><title>Widget Report</title></head>

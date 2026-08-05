@@ -1,0 +1,24 @@
+HiraraSTT
+Copyright 2026 Lucas D Marshall (Kaung Myat San)
+
+This product includes software developed by Lucas D Marshall (Kaung Myat San).
+
+--------------------------------------------------------------------------------
+
+This product depends on software from third parties, each under its own license:
+
+  - faster-whisper (MIT)          https://github.com/SYSTRAN/faster-whisper
+  - CTranslate2 (MIT)             https://github.com/OpenNMT/CTranslate2
+  - httpx (BSD-3-Clause)          https://github.com/encode/httpx
+  - FastAPI (MIT)                 https://github.com/fastapi/fastapi
+  - uvicorn (BSD-3-Clause)        https://github.com/encode/uvicorn
+  - mcp (MIT)                     https://github.com/modelcontextprotocol/python-sdk
+
+Whisper model weights are released by OpenAI under the MIT license and are
+downloaded at runtime (not bundled). See https://github.com/openai/whisper
+
+  - openai/whisper (MIT)          https://github.com/openai/whisper
+
+Optional alternate backend:
+
+  - openai-whisper (MIT)          https://github.com/openai/whisper

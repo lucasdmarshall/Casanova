@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from web_tools.budget import UsageBudget
-from web_tools.cache import Cache
-from web_tools.config import (
+from hiraraweb.budget import UsageBudget
+from hiraraweb.cache import Cache
+from hiraraweb.config import (
     BudgetConfig,
     CacheConfig,
     FetchConfig,
@@ -14,8 +14,8 @@ from web_tools.config import (
     RobotsConfig,
     SearchConfig,
 )
-from web_tools.search import SearchResult
-from web_tools.tools import Toolset
+from hiraraweb.search import SearchResult
+from hiraraweb.tools import Toolset
 
 
 # --- the counter itself ----------------------------------------------------
@@ -94,7 +94,7 @@ def build(tmp_path, **budget_kwargs):
 
 
 def stub_search(monkeypatch, counter):
-    from web_tools import tools as tools_module
+    from hiraraweb import tools as tools_module
 
     async def fake_search(query, **kwargs):
         counter.append(query)
@@ -169,8 +169,8 @@ async def test_unlimited_by_default(tmp_path, monkeypatch):
 
 
 async def test_fetch_budget_is_enforced(tmp_path, monkeypatch):
-    from web_tools import tools as tools_module
-    from web_tools.fetch import FetchResult
+    from hiraraweb import tools as tools_module
+    from hiraraweb.fetch import FetchResult
 
     calls: list[str] = []
 

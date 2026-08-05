@@ -1,5 +1,5 @@
 [project]
-name = "web-search"
+name = "hirara-web"
 version = "0.1.0"
 description = "Self-hosted web_search and web_fetch tools for LLM agents"
 readme = "README.md"
@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Lucas D Marshall (Kaung Myat San)" }]
-keywords = ["llm", "agent", "mcp", "web-search", "web-fetch", "searxng", "ssrf"]
+keywords = ["llm", "agent", "mcp", "hirara-web", "web-fetch", "searxng", "ssrf"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -21,9 +21,9 @@ dependencies = [
     "httpx>=0.28",
     "trafilatura>=2.0",
     "pypdf>=5.0",
-    # Shared SSRF guard. Repo-local package (web-tools/casanova-core), not on
-    # PyPI — install it first: pip install -e casanova-core
-    "casanova-core>=0.1",
+    # Shared SSRF guard. Repo-local package (hirara-web/hirara-core), not on
+    # PyPI — install it first: pip install -e hirara-core
+    "hirara-core>=0.1",
 ]
 
 [project.optional-dependencies]
@@ -37,7 +37,7 @@ Repository = "https://github.com/lucasdmarshall/web_search"
 Issues = "https://github.com/lucasdmarshall/web_search/issues"
 
 [project.scripts]
-web-tools-mcp = "web_tools.mcp_server:main"
+hirara-web-mcp = "hiraraweb.mcp_server:main"
 
 [build-system]
 requires = ["setuptools>=68"]

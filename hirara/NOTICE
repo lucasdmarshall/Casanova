@@ -1,0 +1,10 @@
+Hirara (Python client)
+Copyright 2026 Lucas D Marshall (Kaung Myat San)
+
+This product includes software developed by Lucas D Marshall (Kaung Myat San).
+
+--------------------------------------------------------------------------------
+
+This product depends on software from third parties, each under its own license:
+
+  - httpx (BSD-3-Clause)          https://github.com/encode/httpx

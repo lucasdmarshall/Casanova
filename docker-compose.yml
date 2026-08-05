@@ -1,6 +1,6 @@
 # Two containers, one private network.
 #
-# SearXNG publishes no ports. It is reachable only from web-tools over the
+# SearXNG publishes no ports. It is reachable only from hirara-web over the
 # compose network, which is why its limiter can safely stay off. Do not add a
 # `ports:` block to it on a public VPS.
 #
@@ -10,7 +10,7 @@
 #   - The published port is configurable; if 8000 is taken, set WT_PORT.
 #   - A dedicated bridge network, so nothing joins an existing one.
 
-name: web-tools
+name: hirara-web
 
 services:
   searxng:
@@ -36,7 +36,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  web-tools:
+  hirara-web:
     build: .
     restart: unless-stopped
     depends_on:
@@ -44,7 +44,7 @@ services:
     environment:
       - WT_SEARXNG_URL=http://searxng:8080
       - WT_CACHE_PATH=/data/cache.db
-      # Measured with `python -m web_tools.engine_check`. Four independent
+      # Measured with `python -m hiraraweb.engine_check`. Four independent
       # indexes: search survives losing any one of them.
       - WT_SEARCH_ENGINES=google cse,duckduckgo web,yandex,mwmbl,wikipedia
       # Refuse URLs that never appeared in the conversation (exfiltration

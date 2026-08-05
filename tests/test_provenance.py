@@ -9,21 +9,21 @@ from __future__ import annotations
 
 import pytest
 
-from web_tools.cache import Cache
-from web_tools.config import (
+from hiraraweb.cache import Cache
+from hiraraweb.config import (
     CacheConfig,
     FetchConfig,
     ProvenanceConfig,
     RobotsConfig,
     SearchConfig,
 )
-from web_tools.provenance import (
+from hiraraweb.provenance import (
     SOURCE_CLIENT,
     SOURCE_SEARCH,
     UrlRegistry,
     normalize_url,
 )
-from web_tools.tools import Toolset
+from hiraraweb.tools import Toolset
 
 
 # --- normalisation ---------------------------------------------------------
@@ -158,8 +158,8 @@ async def test_client_registration_permits_a_fetch(tmp_path, monkeypatch):
 
 
 async def test_search_results_become_fetchable(tmp_path, monkeypatch):
-    from web_tools import tools as tools_module
-    from web_tools.search import SearchResult
+    from hiraraweb import tools as tools_module
+    from hiraraweb.search import SearchResult
 
     toolset = build(tmp_path)
 
@@ -175,8 +175,8 @@ async def test_search_results_become_fetchable(tmp_path, monkeypatch):
 
 async def test_cached_search_still_registers_results(tmp_path, monkeypatch):
     """A cache hit must authorize its URLs exactly like a fresh search."""
-    from web_tools import tools as tools_module
-    from web_tools.search import SearchResult
+    from hiraraweb import tools as tools_module
+    from hiraraweb.search import SearchResult
 
     toolset = build(tmp_path)
 
@@ -198,8 +198,8 @@ async def test_warn_policy_allows_but_off_disables(tmp_path):
 
 async def test_provenance_is_checked_before_the_cache(tmp_path, monkeypatch):
     """A previously cached body must not leak to a session that never saw the URL."""
-    from web_tools import tools as tools_module
-    from web_tools.fetch import FetchResult
+    from hiraraweb import tools as tools_module
+    from hiraraweb.fetch import FetchResult
 
     toolset = build(tmp_path)
 
@@ -223,8 +223,8 @@ async def test_provenance_is_checked_before_the_cache(tmp_path, monkeypatch):
 
 
 async def test_redirect_target_is_registered_but_body_links_are_not(tmp_path, monkeypatch):
-    from web_tools import tools as tools_module
-    from web_tools.fetch import FetchResult
+    from hiraraweb import tools as tools_module
+    from hiraraweb.fetch import FetchResult
 
     toolset = build(tmp_path)
 

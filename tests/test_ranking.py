@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from web_tools.search import (
+from hiraraweb.search import (
     SearchResult,
     normalize_query,
     rank_by_relevance,

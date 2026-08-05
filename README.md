@@ -1,19 +1,19 @@
 <div align="center">
 
-<img src="assets/casanova-logo.png" alt="Casanova" width="200" />
+<img src="assets/hirara-logo.png" alt="Hirara" width="200" />
 
-# Casanova
+# Hirara
 
 **A self-hosted tool hub for AI agents — no third-party API keys.**
 
-Casanova is a growing collection of agent tools you run on your own machine.
+Hirara is a growing collection of agent tools you run on your own machine.
 `web_search` and `web_fetch` replace hosted agent web tools — search against
 your own [SearXNG](https://github.com/searxng/searxng), fetch through a
-hardened perimeter you control. [`transcriptanova/`](transcriptanova/) adds
-free open-source speech-to-text via Whisper, [`casanovapdf/`](casanovapdf/)
-reads, parses and builds PDFs, [`casanovacode/`](casanovacode/) runs code
-in a Docker sandbox, [`casaocr/`](casaocr/) reads text out of images and
-scanned PDFs, and [`casareader/`](casareader/) reads Office documents (Word,
+hardened perimeter you control. [`hirarastt/`](hirarastt/) adds
+free open-source speech-to-text via Whisper, [`hirarapdf/`](hirarapdf/)
+reads, parses and builds PDFs, [`hiraracode/`](hiraracode/) runs code
+in a Docker sandbox, [`hiraraocr/`](hiraraocr/) reads text out of images and
+scanned PDFs, and [`hirarareader/`](hirarareader/) reads Office documents (Word,
 PowerPoint, Excel). Same principle every time: self-hosted, key-free, and built
 to be inspected.
 
@@ -32,25 +32,25 @@ to be inspected.
 |---|---|---|
 | **`web_search`** | ✅ shipped | Ranked search results via your own SearXNG — titles, URLs, snippets |
 | **`web_fetch`** | ✅ shipped | Fetch one URL as clean markdown, through an SSRF-hardened perimeter |
-| **`transcribe`** | 🚧 scaffold | Free open-source Whisper STT — [`transcriptanova/`](transcriptanova/) |
-| **`pdf_read`** | ✅ shipped | Extract a PDF's text + metadata — [`casanovapdf/`](casanovapdf/) |
-| **`pdf_info`** | ✅ shipped | Parse a PDF's structure: pages, outline, form fields — [`casanovapdf/`](casanovapdf/) |
-| **`pdf_create`** | ✅ shipped | Build a PDF from Markdown, plain text, or HTML — [`casanovapdf/`](casanovapdf/) |
-| **`execute_code`** | ✅ shipped | Run code in a throwaway Docker sandbox — [`casanovacode/`](casanovacode/) |
-| **`ocr_read`** | ✅ shipped | OCR an image or scanned PDF → markdown — [`casaocr/`](casaocr/) |
-| **`form_extract`** | ✅ shipped | Fields + line-item table from an invoice/receipt — [`casaocr/`](casaocr/) |
-| **`office_read`** | ✅ shipped | Read docx / pptx / xlsx → markdown — [`casareader/`](casareader/) |
+| **`transcribe`** | 🚧 scaffold | Free open-source Whisper STT — [`hirarastt/`](hirarastt/) |
+| **`pdf_read`** | ✅ shipped | Extract a PDF's text + metadata — [`hirarapdf/`](hirarapdf/) |
+| **`pdf_info`** | ✅ shipped | Parse a PDF's structure: pages, outline, form fields — [`hirarapdf/`](hirarapdf/) |
+| **`pdf_create`** | ✅ shipped | Build a PDF from Markdown, plain text, or HTML — [`hirarapdf/`](hirarapdf/) |
+| **`execute_code`** | ✅ shipped | Run code in a throwaway Docker sandbox — [`hiraracode/`](hiraracode/) |
+| **`ocr_read`** | ✅ shipped | OCR an image or scanned PDF → markdown — [`hiraraocr/`](hiraraocr/) |
+| **`form_extract`** | ✅ shipped | Fields + line-item table from an invoice/receipt — [`hiraraocr/`](hiraraocr/) |
+| **`office_read`** | ✅ shipped | Read docx / pptx / xlsx → markdown — [`hirarareader/`](hirarareader/) |
 | _more_ | 🚧 planned | The hub is designed to grow — additional agent tools land here over time |
 
 Every tool that fetches an attacker-influenceable URL routes through
-[`casanova-core`](casanova-core/) — one shared SSRF guard, so a new tool cannot
+[`hirara-core`](hirara-core/) — one shared SSRF guard, so a new tool cannot
 quietly re-open the egress hole. That is not hypothetical: the transcription
 tool first shipped a URL fetch with no perimeter at all; wiring it to the shared
 guard is what closed it.
 
 ## One endpoint for everything
 
-[`casanova-hub`](casanova-hub/) is a thin gateway that fronts every tool: one
+[`hirara-hub`](hirara-hub/) is a thin gateway that fronts every tool: one
 aggregated `/schemas`, one `/call` forwarder, one federating MCP server, and
 opt-in bearer auth — while each tool stays isolated in its own container. Bring
 the whole stack up with a single command:
@@ -62,6 +62,26 @@ docker compose -f docker-compose.hub.yml up -d --build
 Only the gateway publishes a port (loopback `8080`); the tools talk to it over a
 private network. Auth is off by default (fine for local use) — set `HUB_TOKEN`
 before you expose it.
+
+### Use it from Python
+
+The [`hirara`](hirara/) client calls the hub's tools like functions:
+
+```bash
+pip install hirara
+```
+
+```python
+import hirara
+hirara.configure("http://localhost:8080")           # or set HIRARA_HUB_URL
+
+hirara.web_search("rust borrow checker", max_results=5)
+hirara.office_read(path="deck.pptx")["markdown"]     # reads + base64s the file for you
+hirara.execute_code("python", "print(sum(range(10)))")
+```
+
+It's a thin client over a running hub — `pip install hirara` plus a hub up and
+you're calling tools; no hub, no results.
 
 ---
 
@@ -87,8 +107,8 @@ codebase.
 ## Quick start
 
 ```bash
-git clone https://github.com/lucasdmarshall/Casanova.git
-cd Casanova
+git clone https://github.com/lucasdmarshall/Hirara.git
+cd Hirara
 ```
 
 ```bash
@@ -118,7 +138,7 @@ curl -X POST localhost:8000/web_fetch -H 'content-type: application/json' -d '{"
 As an MCP server over stdio:
 
 ```bash
-python -m web_tools.mcp_server
+python -m hiraraweb.mcp_server
 ```
 
 ---
@@ -148,15 +168,15 @@ python -m web_tools.mcp_server
 
 | Module | Role |
 |---|---|
-| [`guard.py`](src/web_tools/guard.py) | SSRF perimeter — scheme/port allowlist, resolve-then-pin |
-| [`fetch.py`](src/web_tools/fetch.py) | Streaming fetch, manual redirect loop, byte caps |
-| [`extract.py`](src/web_tools/extract.py) | trafilatura → markdown, PDF text, invisible-char stripping |
-| [`provenance.py`](src/web_tools/provenance.py) | URL provenance — exfiltration control |
-| [`robots.py`](src/web_tools/robots.py) | robots.txt, fetched through the guard |
-| [`search.py`](src/web_tools/search.py) | SearXNG adapter behind a swappable protocol |
-| [`budget.py`](src/web_tools/budget.py) | Per-session call caps — the `max_uses` equivalent |
-| [`cache.py`](src/web_tools/cache.py) | SQLite TTL cache, keyed on normalized queries |
-| [`tools.py`](src/web_tools/tools.py) | Shared layer both front ends call |
+| [`guard.py`](src/hiraraweb/guard.py) | SSRF perimeter — scheme/port allowlist, resolve-then-pin |
+| [`fetch.py`](src/hiraraweb/fetch.py) | Streaming fetch, manual redirect loop, byte caps |
+| [`extract.py`](src/hiraraweb/extract.py) | trafilatura → markdown, PDF text, invisible-char stripping |
+| [`provenance.py`](src/hiraraweb/provenance.py) | URL provenance — exfiltration control |
+| [`robots.py`](src/hiraraweb/robots.py) | robots.txt, fetched through the guard |
+| [`search.py`](src/hiraraweb/search.py) | SearXNG adapter behind a swappable protocol |
+| [`budget.py`](src/hiraraweb/budget.py) | Per-session call caps — the `max_uses` equivalent |
+| [`cache.py`](src/hiraraweb/cache.py) | SQLite TTL cache, keyed on normalized queries |
+| [`tools.py`](src/hiraraweb/tools.py) | Shared layer both front ends call |
 
 ---
 
@@ -259,7 +279,7 @@ One fetch per host per day. Set `WT_RESPECT_ROBOTS=false` to skip it entirely.
 ## Engine selection — measure it, don't guess
 
 ```bash
-docker compose exec -T web-tools python -m web_tools.engine_check
+docker compose exec -T hirara-web python -m hiraraweb.engine_check
 ```
 
 This matters more than it sounds, because **every failure mode here is silent**:

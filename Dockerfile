@@ -7,11 +7,11 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Shared SSRF guard first, so `pip install .` sees casanova-core already
+# Shared SSRF guard first, so `pip install .` sees hirara-core already
 # satisfied and never reaches for a (non-existent) PyPI release. The build
-# context is the repo root, so casanova-core/ is in scope.
-COPY casanova-core ./casanova-core
-RUN pip install --no-cache-dir ./casanova-core
+# context is the repo root, so hirara-core/ is in scope.
+COPY hirara-core ./hirara-core
+RUN pip install --no-cache-dir ./hirara-core
 
 COPY pyproject.toml ./
 COPY src ./src
@@ -29,4 +29,4 @@ ENV WT_CACHE_PATH=/data/cache.db \
 
 EXPOSE 8000
 
-CMD ["uvicorn", "web_tools.service:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "hiraraweb.service:app", "--host", "0.0.0.0", "--port", "8000"]
