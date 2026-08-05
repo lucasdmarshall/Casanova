@@ -1,0 +1,95 @@
+# The whole Casanova hub, one command:  docker compose -f docker-compose.hub.yml up -d --build
+#
+# Every tool runs in its own container (isolation preserved); only the gateway
+# publishes a port, and only on loopback. Tools talk to each other and to the
+# gateway over the private `casanova` network by service name — so a foreign
+# process occupying a port on the host can never masquerade as a tool.
+#
+# Auth is opt-in: set HUB_TOKEN in the environment (or a .env file) to require a
+# bearer token. Unset = open, which is fine because only 127.0.0.1 is bound.
+#
+# NOTE: casanovacode mounts the Docker socket — that container can control the
+# host's Docker daemon (root-equivalent). Only run this stack on a host you are
+# comfortable giving that power to; do NOT run it on a shared production box.
+
+name: casanova
+
+services:
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://searxng:8080/
+    networks: [casanova]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID]
+
+  websearch:
+    build: { context: ., dockerfile: Dockerfile }
+    restart: unless-stopped
+    depends_on: [searxng]
+    environment:
+      - WT_SEARXNG_URL=http://searxng:8080
+      - WT_CACHE_PATH=/data/cache.db
+      - WT_FETCH_URL_POLICY=strict
+    volumes: [websearch-cache:/data]
+    networks: [casanova]
+
+  casanovapdf:
+    build: { context: ., dockerfile: casanovapdf/Dockerfile }
+    restart: unless-stopped
+    networks: [casanova]
+
+  casanovacode:
+    build: { context: ., dockerfile: casanovacode/Dockerfile }
+    restart: unless-stopped
+    # Host-root-equivalent — see the note at the top of this file.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [casanova]
+
+  casaocr:
+    build: { context: ., dockerfile: casaocr/Dockerfile }
+    restart: unless-stopped
+    volumes: [ocr-models:/data]  # PaddleOCR weights download once
+    networks: [casanova]
+
+  casareader:
+    build: { context: ., dockerfile: casareader/Dockerfile }
+    restart: unless-stopped
+    networks: [casanova]
+
+  # transcriptanova (Whisper STT) is still experimental and heavy (downloads a
+  # model at boot). Uncomment to include it — the gateway will pick it up.
+  # transcriptanova:
+  #   build: { context: ., dockerfile: transcriptanova/Dockerfile }
+  #   restart: unless-stopped
+  #   volumes: [stt-models:/data/models]
+  #   networks: [casanova]
+
+  hub:
+    build: { context: ., dockerfile: casanova-hub/Dockerfile }
+    restart: unless-stopped
+    depends_on: [websearch, casanovapdf, casanovacode, casaocr, casareader]
+    environment:
+      - HUB_TOKEN=${HUB_TOKEN:-}
+      - HUB_WEBSEARCH_URL=http://websearch:8000
+      - HUB_CASANOVAPDF_URL=http://casanovapdf:8200
+      - HUB_CASANOVACODE_URL=http://casanovacode:8300
+      - HUB_CASAOCR_URL=http://casaocr:8400
+      - HUB_CASAREADER_URL=http://casareader:8500
+      - HUB_TRANSCRIPTANOVA_URL=http://transcriptanova:8100
+    ports:
+      - "127.0.0.1:${HUB_PORT:-8080}:8080"
+    networks: [casanova]
+
+networks:
+  casanova:
+    driver: bridge
+
+volumes:
+  websearch-cache:
+  ocr-models:
+  stt-models:

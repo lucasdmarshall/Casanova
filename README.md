@@ -48,6 +48,21 @@ quietly re-open the egress hole. That is not hypothetical: the transcription
 tool first shipped a URL fetch with no perimeter at all; wiring it to the shared
 guard is what closed it.
 
+## One endpoint for everything
+
+[`casanova-hub`](casanova-hub/) is a thin gateway that fronts every tool: one
+aggregated `/schemas`, one `/call` forwarder, one federating MCP server, and
+opt-in bearer auth — while each tool stays isolated in its own container. Bring
+the whole stack up with a single command:
+
+```bash
+docker compose -f docker-compose.hub.yml up -d --build
+```
+
+Only the gateway publishes a port (loopback `8080`); the tools talk to it over a
+private network. Auth is off by default (fine for local use) — set `HUB_TOKEN`
+before you expose it.
+
 ---
 
 ## Why
