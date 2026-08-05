@@ -1,0 +1,46 @@
+# CasaReader — self-hosted Office-document reader for agents (HTTP + MCP).
+#
+# Pure-Python (python-docx / python-pptx / openpyxl). No system packages, no
+# models, nothing to download at boot — up as soon as the image builds.
+#
+# Bound to loopback: put your own auth in front before exposing this.
+
+name: casareader
+
+services:
+  casareader:
+    build:
+      # Context is the repo root so the build can reach the shared
+      # casanova-core package (a sibling of this tool's directory).
+      context: ..
+      dockerfile: casareader/Dockerfile
+    restart: unless-stopped
+    environment:
+      - CRDR_MAX_BYTES=${CRDR_MAX_BYTES:-26214400}
+      - CRDR_MAX_CHARS=${CRDR_MAX_CHARS:-500000}
+      - CRDR_MAX_ROWS=${CRDR_MAX_ROWS:-2000}
+      # file_url fetches through casanova-core's SSRF guard; safe to enable on a
+      # trusted network. Off by default.
+      - CRDR_ALLOW_URL_FETCH=${CRDR_ALLOW_URL_FETCH:-false}
+      # Local-file read (file_path). Off in the image because this service is
+      # network-exposed; use uploads / base64. Flip true only for trusted/local.
+      - CRDR_ALLOW_LOCAL_PATH=${CRDR_ALLOW_LOCAL_PATH:-false}
+    ports:
+      - "127.0.0.1:${CRDR_PORT:-8500}:8500"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8500/health',timeout=5).status==200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  internal:
+    driver: bridge

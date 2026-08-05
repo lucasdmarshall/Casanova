@@ -12,9 +12,10 @@ your own [SearXNG](https://github.com/searxng/searxng), fetch through a
 hardened perimeter you control. [`transcriptanova/`](transcriptanova/) adds
 free open-source speech-to-text via Whisper, [`casanovapdf/`](casanovapdf/)
 reads, parses and builds PDFs, [`casanovacode/`](casanovacode/) runs code
-in a Docker sandbox, and [`casaocr/`](casaocr/) reads text out of images and
-scanned PDFs. Same principle every time: self-hosted, key-free, and built to be
-inspected.
+in a Docker sandbox, [`casaocr/`](casaocr/) reads text out of images and
+scanned PDFs, and [`casareader/`](casareader/) reads Office documents (Word,
+PowerPoint, Excel). Same principle every time: self-hosted, key-free, and built
+to be inspected.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
@@ -38,6 +39,7 @@ inspected.
 | **`execute_code`** | ✅ shipped | Run code in a throwaway Docker sandbox — [`casanovacode/`](casanovacode/) |
 | **`ocr_read`** | ✅ shipped | OCR an image or scanned PDF → markdown — [`casaocr/`](casaocr/) |
 | **`form_extract`** | ✅ shipped | Fields + line-item table from an invoice/receipt — [`casaocr/`](casaocr/) |
+| **`office_read`** | ✅ shipped | Read docx / pptx / xlsx → markdown — [`casareader/`](casareader/) |
 | _more_ | 🚧 planned | The hub is designed to grow — additional agent tools land here over time |
 
 Every tool that fetches an attacker-influenceable URL routes through
