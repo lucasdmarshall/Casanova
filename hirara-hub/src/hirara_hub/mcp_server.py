@@ -17,6 +17,7 @@ import asyncio
 
 from mcp.server.mcpserver import MCPServer
 
+from . import banner
 from .config import HubConfig
 from .gateway import Gateway
 from .registry import TOOLS
@@ -64,12 +65,14 @@ def main() -> None:
         help="MCP transport to serve on (default: stdio).",
     )
     args = parser.parse_args()
-    # Surface which backends are reachable at boot (informational only).
+    # Banner + which backends are reachable at boot (informational only).
+    sub = f"hub | MCP {args.transport}"
     try:
         health = asyncio.run(_gateway.health())
-        print(f"[hirara-hub] backends up: {health['services_up']}/{health['services_total']}")
+        sub += f" | backends {health['services_up']}/{health['services_total']}"
     except Exception:  # noqa: BLE001
         pass
+    banner.show(sub)
     server.run(transport=args.transport)
 
 

@@ -12,16 +12,28 @@ token the gateway is open — run it on loopback only.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
+from . import banner
 from .config import HubConfig
 from .gateway import Gateway
 
 _config = HubConfig.from_env()
 _gateway = Gateway(_config)
 
-app = FastAPI(title="hirara-hub", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Printed once on startup (not on import), so it shows in the logs /
+    # `docker compose up` output without spamming the test suite.
+    banner.show(f"hub | HTTP :8080 | auth {'on' if _config.auth_enabled else 'off'}")
+    yield
+
+
+app = FastAPI(title="hirara-hub", version="0.1.0", lifespan=lifespan)
 
 
 async def require_auth(authorization: str | None = Header(default=None)) -> None:
