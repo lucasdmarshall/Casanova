@@ -38,6 +38,11 @@ jobs:
       id-token: write # OIDC token for Trusted Publishing — no secrets needed
     strategy:
       fail-fast: false
+      # Run one package at a time. Fanning out all five at once starved the
+      # runner queue on this account (only ~2 jobs got a runner; the rest sat
+      # queued ~15 min and were auto-cancelled). Sequential keeps exactly one
+      # job waiting for a runner, and each finishes in well under a minute.
+      max-parallel: 1
       matrix:
         include:
           # hirara-core has no repo-local dependency, so it can always build
