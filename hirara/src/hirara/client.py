@@ -23,7 +23,14 @@ import os
 
 import httpx
 
+from ._local import LocalBackends
+
 DEFAULT_URL = "http://localhost:8080"
+
+# Discovered once per process: the in-process tool backends installed here
+# (see hirara._local). Shared by every Client — it reflects the environment,
+# not any one connection.
+_BACKENDS = LocalBackends()
 
 
 class HiraraError(RuntimeError):
@@ -54,10 +61,22 @@ class Client:
         *,
         token: str | None = None,
         timeout: float = 120.0,
+        local: bool | str = "auto",
     ) -> None:
         self.url = (url or os.getenv("HIRARA_HUB_URL") or DEFAULT_URL).rstrip("/")
+        # Did the caller actually name a hub, or are we on the default? In "auto"
+        # mode an explicit hub wins (if you told us your hub, we use it); with no
+        # hub configured we run tools in-process instead.
+        self._hub_explicit = url is not None or os.getenv("HIRARA_HUB_URL") is not None
         self.token = token if token is not None else os.getenv("HIRARA_HUB_TOKEN")
         self.timeout = timeout
+        # local=True  → run tools in-process only (error if no local backend);
+        # local=False → always go to the hub over HTTP (the original behaviour);
+        # local="auto" (default) → run in-process when a backend is installed for
+        #   the tool, otherwise fall through to the hub. A plain `pip install
+        #   hirara` installs no backends, so "auto" behaves exactly like the old
+        #   HTTP client until you `pip install hirara[local]`.
+        self.local = local
         self._client: httpx.Client | None = None
 
     # allow dependency injection in tests
@@ -69,8 +88,38 @@ class Client:
 
     # --- low level ---
 
+    def _use_local(self, name: str) -> bool:
+        """Whether ``name`` should run in-process for this client."""
+        if self.local is True:
+            return _BACKENDS.has(name)
+        if self.local is False:
+            return False
+        # "auto": an explicitly configured hub takes precedence; with no hub
+        # configured, run in-process when a backend is installed for this tool.
+        if self._hub_explicit:
+            return False
+        return _BACKENDS.has(name)
+
     def call(self, name: str, arguments: dict | None = None, *, raise_on_error: bool = True) -> dict:
-        """Invoke a tool by name with a raw arguments dict."""
+        """Invoke a tool by name with a raw arguments dict.
+
+        Runs in-process when a local backend is installed for the tool (unless
+        ``local=False``); otherwise forwards to the hub over HTTP.
+        """
+        if self._use_local(name):
+            data = _BACKENDS.call(name, arguments)
+            if raise_on_error and isinstance(data, dict) and data.get("error"):
+                raise HiraraToolError(name, data["error"], data)
+            return data
+        if self.local is True:
+            raise HiraraError(
+                f"{name!r} has no in-process backend installed and local mode is "
+                f"forced (local=True). Install one (e.g. pip install "
+                f"hirara[local]) or point at a hub (hirara.configure('http://…'))."
+            )
+        return self._call_http(name, arguments, raise_on_error=raise_on_error)
+
+    def _call_http(self, name: str, arguments: dict | None = None, *, raise_on_error: bool = True) -> dict:
         client = self._http()
         try:
             resp = client.post("/call", json={"name": name, "arguments": arguments or {}})
@@ -93,8 +142,37 @@ class Client:
         return data
 
     def tools(self) -> list[dict]:
-        """The aggregated tool schemas from every reachable backend."""
-        return self._get("/schemas").get("tools", [])
+        """The aggregated tool schemas: in-process backends plus the hub.
+
+        Local schemas come first and win on name collisions (that is the backend
+        that would actually run). When local mode can answer, a hub that is down
+        is not fatal — the local tools are still listed.
+        """
+        # Mirror _use_local so tools() lists what would actually run.
+        local_active = self.local is True or (self.local == "auto" and not self._hub_explicit)
+        hub_active = self.local is not True
+
+        local = _BACKENDS.schemas() if local_active else []
+        remote: list[dict] = []
+        if hub_active:
+            try:
+                remote = self._get("/schemas").get("tools", [])
+            except HiraraError:
+                # If local can answer, an unreachable hub is not fatal; otherwise
+                # preserve the original behaviour and surface the error.
+                if not local_active:
+                    raise
+                remote = []
+
+        seen: set = set()
+        merged: list[dict] = []
+        for schema in [*local, *remote]:
+            name = schema.get("name")
+            if name in seen:
+                continue
+            seen.add(name)
+            merged.append(schema)
+        return merged
 
     def health(self) -> dict:
         return self._get("/health")
@@ -167,10 +245,22 @@ class Client:
 _default: Client | None = None
 
 
-def configure(url: str | None = None, *, token: str | None = None, timeout: float = 120.0) -> Client:
-    """Set the default hub the module-level functions talk to."""
+def configure(
+    url: str | None = None,
+    *,
+    token: str | None = None,
+    timeout: float = 120.0,
+    local: bool | str = "auto",
+) -> Client:
+    """Configure how the module-level functions run tools.
+
+    Pass a hub ``url`` to forward tools over HTTP. Leave it out and install
+    ``hirara[local]`` to run tools in this process with no hub. ``local`` may be
+    ``"auto"`` (default: in-process when available, else the hub), ``True``
+    (in-process only), or ``False`` (always the hub).
+    """
     global _default
-    _default = Client(url, token=token, timeout=timeout)
+    _default = Client(url, token=token, timeout=timeout, local=local)
     return _default
 
 

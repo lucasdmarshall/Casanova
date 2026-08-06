@@ -6,6 +6,9 @@ __pycache__/
 .env
 cache.db*
 
+# Local-only handoff / notes (never push)
+info.md
+
 # Credential notes must never be committed. Kept broad on purpose.
 *[Ss]erver*[Aa]ccess*
 *[Cc]redential*

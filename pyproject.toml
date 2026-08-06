@@ -39,6 +39,10 @@ Issues = "https://github.com/lucasdmarshall/web_search/issues"
 [project.scripts]
 hirara-web-mcp = "hiraraweb.mcp_server:main"
 
+# In-process backend for the hirara SDK's local mode (pip install hirara[local]).
+[project.entry-points."hirara.backends"]
+hirara-web = "hiraraweb.tools"
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"

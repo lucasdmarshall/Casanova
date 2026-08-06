@@ -8,8 +8,16 @@ import httpx
 import pytest
 
 from hirara import Client, HiraraError, HiraraToolError
+from hirara._local import LocalBackends
 
 _last: dict = {}
+
+# The local-mode tests need the in-process backends installed
+# (pip install hirara[local]); skip them cleanly when they are not.
+_HAS_LOCAL = LocalBackends().has("pdf_create")
+local_only = pytest.mark.skipif(
+    not _HAS_LOCAL, reason="local backends not installed (pip install hirara[local])"
+)
 
 
 def _handler(request: httpx.Request) -> httpx.Response:
@@ -126,3 +134,57 @@ def test_discovery():
     c = _client()
     assert c.tools() == [{"name": "web_search"}]
     assert c.health()["status"] == "ok"
+
+
+# --- local mode ------------------------------------------------------------
+
+
+def test_auto_prefers_an_explicit_hub_over_local():
+    """If the caller named a hub, local-capable tools still go to the hub."""
+    c = Client("http://hub.local")  # local defaults to "auto"
+    assert c._use_local("pdf_read") is False
+
+
+def test_auto_uses_local_when_no_hub_is_configured(monkeypatch):
+    monkeypatch.delenv("HIRARA_HUB_URL", raising=False)
+    c = Client()  # no url, no env → auto should run in-process
+    assert c._use_local("pdf_read") is _HAS_LOCAL
+
+
+def test_local_false_never_uses_local():
+    c = Client("http://hub.local", local=False)
+    assert c._use_local("pdf_read") is False
+
+
+def test_local_true_errors_for_a_tool_with_no_backend():
+    c = Client(local=True)
+    with pytest.raises(HiraraError, match="no in-process backend"):
+        c.call("execute_code", {"language": "python", "code": "print(1)"})
+
+
+@local_only
+def test_local_mode_runs_pdf_in_process():
+    """No hub, no HTTP: pdf_create + pdf_read round-trip in this process."""
+    c = Client(local=True)
+    made = c.pdf_create("# Title\n\nBody text here.", format="markdown")
+    assert made["error"] is None
+    assert made["pdf_base64"]
+
+    read = c.pdf_read(base64=made["pdf_base64"])
+    assert read["error"] is None
+    assert "Title" in (read["text"] or "")
+
+
+@local_only
+def test_local_tool_error_still_raises():
+    """A local tool that reports an error raises HiraraToolError, like the hub."""
+    c = Client(local=True)
+    with pytest.raises(HiraraToolError):
+        c.pdf_read(base64="not-valid-base64-@@@")
+
+
+@local_only
+def test_local_tools_listing_includes_backends():
+    c = Client(local=True)
+    names = {t["name"] for t in c.tools()}
+    assert {"pdf_read", "web_fetch", "office_read"} <= names

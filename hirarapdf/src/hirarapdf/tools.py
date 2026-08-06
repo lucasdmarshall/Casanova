@@ -413,4 +413,40 @@ __all__ = [
     "PDF_INFO_SCHEMA",
     "PDF_READ_SCHEMA",
     "Toolset",
+    "TOOL_NAMES",
+    "call_tool",
+    "tool_schemas",
 ]
+
+
+# --- local backend: in-process dispatch for the hirara SDK -------------------
+# The hirara SDK discovers this module through the ``hirara.backends`` entry
+# point and calls ``call_tool`` directly, with no HTTP hop. It reuses the very
+# same Toolset the FastAPI service and MCP server use, so a local call and a
+# networked call can never drift apart in behaviour.
+import inspect as _inspect
+
+TOOL_NAMES = ("pdf_read", "pdf_info", "pdf_create")
+_LOCAL_METHODS = {"pdf_read": "read", "pdf_info": "info", "pdf_create": "create"}
+_local_toolset: "Toolset | None" = None
+
+
+def _backend() -> "Toolset":
+    global _local_toolset
+    if _local_toolset is None:
+        _local_toolset = Toolset.from_env()
+    return _local_toolset
+
+
+async def call_tool(name: str, arguments: dict | None = None) -> dict:
+    """Run one tool in-process and return its response envelope."""
+    if name not in _LOCAL_METHODS:
+        raise KeyError(f"unknown tool: {name}")
+    result = getattr(_backend(), _LOCAL_METHODS[name])(**(arguments or {}))
+    if _inspect.isawaitable(result):
+        result = await result
+    return result
+
+
+def tool_schemas() -> list[dict]:
+    return _backend().schemas()

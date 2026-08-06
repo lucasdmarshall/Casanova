@@ -323,4 +323,50 @@ __all__ = [
     "WEB_FETCH_SCHEMA",
     "WEB_SEARCH_SCHEMA",
     "wrap_untrusted",
+    "TOOL_NAMES",
+    "call_tool",
+    "tool_schemas",
 ]
+
+
+# --- local backend: in-process dispatch for the hirara SDK -------------------
+# Discovered by the hirara SDK through the ``hirara.backends`` entry point and
+# called directly (no HTTP hop). Reuses the same Toolset the service and MCP
+# server use, so behaviour cannot drift between local and networked calls.
+#
+# web_fetch is the one tool that needs care here. The provenance guard defaults
+# to strict: it refuses a URL that has not appeared in the conversation, to stop
+# a *model* from fetching links it scraped out of a page body. But an SDK caller
+# who writes ``hirara.web_fetch(url)`` has named the URL explicitly — that IS the
+# "explicit client registration" trusted source the guard allows. So we register
+# the URL under a fixed local session before fetching, and thread that session
+# through search too, so a later fetch of a search result is likewise allowed.
+TOOL_NAMES = ("web_search", "web_fetch")
+_LOCAL_SESSION = "hirara-local"
+_local_toolset: "Toolset | None" = None
+
+
+def _backend() -> "Toolset":
+    global _local_toolset
+    if _local_toolset is None:
+        _local_toolset = Toolset.from_env()
+    return _local_toolset
+
+
+async def call_tool(name: str, arguments: dict | None = None) -> dict:
+    """Run one tool in-process and return its response envelope."""
+    ts = _backend()
+    args = dict(arguments or {})
+    args.setdefault("session_id", _LOCAL_SESSION)
+    if name == "web_search":
+        return await ts.search(**args)
+    if name == "web_fetch":
+        url = args.get("url")
+        if url:
+            ts.register_urls(args["session_id"], [url])
+        return await ts.fetch(**args)
+    raise KeyError(f"unknown tool: {name}")
+
+
+def tool_schemas() -> list[dict]:
+    return [WEB_SEARCH_SCHEMA, WEB_FETCH_SCHEMA]

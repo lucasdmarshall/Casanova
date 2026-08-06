@@ -51,6 +51,10 @@ Issues = "https://github.com/lucasdmarshall/Hirara/issues"
 [project.scripts]
 hirarapdf-mcp = "hirarapdf.mcp_server:main"
 
+# In-process backend for the hirara SDK's local mode (pip install hirara[local]).
+[project.entry-points."hirara.backends"]
+hirarapdf = "hirarapdf.tools"
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"

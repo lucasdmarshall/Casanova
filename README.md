@@ -24,9 +24,10 @@ to be inspected.
 
 </div>
 
-> **`pip install hirara`** — the Python client is live on
-> [PyPI](https://pypi.org/project/hirara/). It talks to a hub you self-host
-> (see **Usage**).
+> **`pip install "hirara[local]"`** — the SDK is live on
+> [PyPI](https://pypi.org/project/hirara/). Run the pure-Python tools right in
+> your process with no server, or point it at a hub you self-host for the tools
+> that need one (see **Usage**).
 
 ---
 
@@ -105,30 +106,59 @@ Three ways, all hitting the same hub. Pick whichever fits.
 
 #### a) Python — `import hirara`
 
+The SDK runs a tool one of two ways, behind the **same call surface**: in this
+process (no server), or forwarded to a running hub. By default it picks
+automatically.
+
+**In-process — no hub, no docker.** Most tools are plain libraries; install them
+and they just run:
+
 ```bash
-pip install hirara
+pip install "hirara[local]"        # pulls the pure-Python tools (web/pdf/office)
 ```
+
+```python
+import hirara
+
+hirara.pdf_read(path="report.pdf")               # runs right here
+hirara.pdf_create("# Title\n\nBody", format="markdown")
+hirara.office_read(path="deck.pptx")["markdown"]
+hirara.web_fetch("https://example.com")
+```
+
+No `configure()` needed. Heavier, model-backed tools are opt-in extras:
+`pip install "hirara[ocr]"`, `hirara[stt]`, or `hirara[all]`.
+
+**Via a hub.** Some tools need a running service — `execute_code` (a Docker
+sandbox) and `web_search` (your own SearXNG). Point the SDK at a hub and those
+work too:
 
 ```python
 import hirara
 hirara.configure("http://localhost:8080")        # or set HIRARA_HUB_URL
 
 hirara.web_search("rust borrow checker", max_results=5)
-hirara.web_fetch("https://example.com")
-hirara.pdf_read(path="report.pdf")               # local file → auto-base64'd for you
-hirara.pdf_create("# Title\n\nBody", format="markdown")
-hirara.office_read(path="deck.pptx")["markdown"]
-hirara.ocr_read(path="scan.png", languages=["en"])
-hirara.form_extract(path="invoice.pdf")["fields"]
 hirara.execute_code("python", "print(sum(range(10)))")
+hirara.ocr_read(path="scan.png", languages=["en"])
 ```
 
-- File tools take `path=` (the client reads + base64s it — works even when the
-  hub can't see your disk), or `url=` / `base64=`.
+**How it routes.** `configure(local=...)` controls it:
+
+- `"auto"` (default) — if you configured a hub, tools go to the hub; if you did
+  not, tools that have a local backend installed run in-process.
+- `True` — in-process only (a tool with no local backend raises a clear error).
+- `False` — always the hub (the original behaviour).
+
+So `pip install hirara` alone behaves exactly like the old HTTP client until you
+add `[local]`; and `pip install "hirara[local]"` with no hub configured runs
+everything it can offline.
+
+- File tools take `path=` (the client reads the file for you), or `url=` /
+  `base64=`.
 - A tool problem raises `HiraraToolError`; an unreachable hub or bad token raises
   `HiraraError`.
-- Multiple hubs / custom timeout:
-  `from hirara import Client; hub = Client("http://…", token="…")`.
+- Multiple hubs / custom timeout / forced mode:
+  `from hirara import Client; hub = Client("http://…", token="…", local=False)`.
 
 #### b) HTTP — any language
 

@@ -1,0 +1,70 @@
+name: Publish to PyPI
+
+# Builds and publishes the pip-installable Hirara packages using PyPI Trusted
+# Publishing (OIDC) — there is no API token to store. Each package is its own
+# PyPI project, so each needs a trusted (or pending) publisher configured on
+# PyPI pointing at this repo + workflow. See RELEASING.md.
+#
+# Triggers:
+#   - pushing a version tag (v0.2.0, ...) -> publishes to PyPI. Each package
+#     publishes at the version in its own pyproject.toml; the tag is only the
+#     release trigger. Versions already on PyPI are skipped (they are immutable).
+#   - manual run from the Actions tab      -> choose TestPyPI (dry run) or PyPI.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Where to publish"
+        type: choice
+        options: [testpypi, pypi]
+        default: testpypi
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC token for Trusted Publishing — no secrets needed
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # hirara-core has no repo-local dependency, so it can always build
+          # first; the others depend on it, but publish order does not matter to
+          # PyPI (it does not resolve dependencies at upload time).
+          - { name: hirara-core, path: hirara-core }
+          - { name: hirara-web, path: "." }
+          - { name: hirarapdf, path: hirarapdf }
+          - { name: hirarareader, path: hirarareader }
+          - { name: hirara, path: hirara }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build ${{ matrix.name }}
+        run: |
+          python -m pip install --upgrade build
+          python -m build --outdir dist "${{ matrix.path }}"
+
+      - name: Publish ${{ matrix.name }} to TestPyPI
+        if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist
+          skip-existing: true
+
+      - name: Publish ${{ matrix.name }} to PyPI
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi')
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+          skip-existing: true

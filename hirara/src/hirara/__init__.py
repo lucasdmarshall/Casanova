@@ -1,10 +1,20 @@
-"""Hirara — the Python client for the Hirara self-hosted agent tool hub.
+"""Hirara — the Python SDK for the Hirara agent tools. No API keys.
+
+Two ways to run a tool, same call surface:
 
     import hirara
+
+    # In-process — no hub, no docker (pip install hirara[local]):
+    hirara.pdf_read(path="report.pdf")
+    hirara.web_fetch("https://example.com")
+
+    # Or forward to a running hub (see the `hirara-hub` gateway):
     hirara.configure("http://localhost:8080")
     hirara.web_search("rust borrow checker", max_results=5)
 
-A thin client over a running hub (see the `hirara-hub` gateway). No API keys.
+By default (`local="auto"`) a tool runs in-process when its package is
+installed, and otherwise falls through to the hub — so tools that need a service
+(`execute_code`, `web_search` against your own SearXNG) keep working via the hub.
 """
 
 from .client import (
@@ -45,7 +55,7 @@ __all__ = [
     "office_read",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __banner__ = (
     "    __  __________  ___    ____  ___ \n"
