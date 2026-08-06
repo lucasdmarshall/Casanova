@@ -67,8 +67,17 @@ your machine.
 
 [`hirara-hub`](hirara-hub/) is a thin gateway that fronts every tool: one
 aggregated `/schemas`, one `/call` forwarder, one federating MCP server, and
-opt-in auth — while each tool stays isolated in its own container. The whole
-stack comes up with one command:
+opt-in auth — while each tool stays isolated in its own container.
+
+**From pre-built images** (fastest — pulls from GHCR, no build):
+
+```bash
+curl -O https://raw.githubusercontent.com/lucasdmarshall/Hirara/main/docker-compose.images.yml
+curl -O https://raw.githubusercontent.com/lucasdmarshall/Hirara/main/searxng/settings.yml --create-dirs -o searxng/settings.yml
+docker compose -f docker-compose.images.yml up -d
+```
+
+**Or build from source** (for development / customizing):
 
 ```bash
 git clone https://github.com/lucasdmarshall/Hirara.git

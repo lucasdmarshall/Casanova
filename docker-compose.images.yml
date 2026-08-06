@@ -1,0 +1,84 @@
+# Run the whole Hirara hub from pre-built images — no build step:
+#
+#   docker compose -f docker-compose.images.yml pull
+#   docker compose -f docker-compose.images.yml up -d
+#
+# Images are published to GHCR by .github/workflows/docker-images.yml. Set
+# HIRARA_TAG to pin a version (default: latest). Same layout as
+# docker-compose.hub.yml — only the gateway publishes a port (loopback), tools
+# talk over the private network, auth is opt-in via HUB_TOKEN.
+#
+# NOTE: hiraracode mounts the Docker socket (host-root-equivalent). Only run
+# this on a host you are comfortable giving that power to.
+
+name: hirara
+
+services:
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://searxng:8080/
+    networks: [hirara]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID]
+
+  websearch:
+    image: ghcr.io/lucasdmarshall/hirara-web:${HIRARA_TAG:-latest}
+    restart: unless-stopped
+    depends_on: [searxng]
+    environment:
+      - WT_SEARXNG_URL=http://searxng:8080
+      - WT_CACHE_PATH=/data/cache.db
+      - WT_FETCH_URL_POLICY=strict
+    volumes: [websearch-cache:/data]
+    networks: [hirara]
+
+  hirarapdf:
+    image: ghcr.io/lucasdmarshall/hirara-pdf:${HIRARA_TAG:-latest}
+    restart: unless-stopped
+    networks: [hirara]
+
+  hiraracode:
+    image: ghcr.io/lucasdmarshall/hirara-code:${HIRARA_TAG:-latest}
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [hirara]
+
+  hiraraocr:
+    image: ghcr.io/lucasdmarshall/hirara-ocr:${HIRARA_TAG:-latest}
+    restart: unless-stopped
+    volumes: [ocr-models:/data]
+    networks: [hirara]
+
+  hirarareader:
+    image: ghcr.io/lucasdmarshall/hirara-reader:${HIRARA_TAG:-latest}
+    restart: unless-stopped
+    networks: [hirara]
+
+  hub:
+    image: ghcr.io/lucasdmarshall/hirara-hub:${HIRARA_TAG:-latest}
+    restart: unless-stopped
+    depends_on: [websearch, hirarapdf, hiraracode, hiraraocr, hirarareader]
+    environment:
+      - HUB_TOKEN=${HUB_TOKEN:-}
+      - HUB_WEBSEARCH_URL=http://websearch:8000
+      - HUB_HIRARAPDF_URL=http://hirarapdf:8200
+      - HUB_HIRARACODE_URL=http://hiraracode:8300
+      - HUB_HIRARAOCR_URL=http://hiraraocr:8400
+      - HUB_HIRARAREADER_URL=http://hirarareader:8500
+      - HUB_HIRARASTT_URL=http://hirarastt:8100
+    ports:
+      - "127.0.0.1:${HUB_PORT:-8080}:8080"
+    networks: [hirara]
+
+networks:
+  hirara:
+    driver: bridge
+
+volumes:
+  websearch-cache:
+  ocr-models:
