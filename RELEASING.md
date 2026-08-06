@@ -29,22 +29,40 @@ Do this once per package. It reserves the four unclaimed names at the same time
 (a "pending publisher" both authorizes the upload *and* claims the name on first
 publish, so no one can squat it in the meantime).
 
+Every publisher uses the same Owner `lucasdmarshall`, Repository `Hirara`, and
+Workflow `pypi-publish.yml` — but a **different Environment name per package**.
+That is required: PyPI refuses two *pending* publishers that share an identical
+owner/repo/workflow/environment tuple ("a pending trusted publisher matching
+this configuration has already been registered for a different project name"),
+so a blank environment can only ever cover one package. The environment names
+below match the ones the workflow sends.
+
+| PyPI project   | Environment name |
+| -------------- | ---------------- |
+| `hirara-core`  | `pypi-core`      |
+| `hirara-web`   | `pypi-web`       |
+| `hirarapdf`    | `pypi-pdf`       |
+| `hirarareader` | `pypi-reader`    |
+| `hirara`       | `pypi-sdk`       |
+
 ### On PyPI (https://pypi.org)
 
-- **`hirara`** already exists (you own it). Open it, go to **Manage → Publishing
-  → Add a new publisher**, and fill in:
-  - Owner: `lucasdmarshall`
-  - Repository name: `Hirara`
-  - Workflow name: `pypi-publish.yml`
-  - Environment name: *(leave blank — the workflow sets none)*
+- **`hirara`** already exists (you own it). Open it → **Manage → Publishing →
+  Add a new publisher**: Owner `lucasdmarshall`, Repository `Hirara`, Workflow
+  `pypi-publish.yml`, Environment `pypi-sdk`.
 - **`hirara-core`, `hirara-web`, `hirarapdf`, `hirarareader`** do not exist yet.
-  Go to **Your account → Publishing → Add a pending publisher** and add one for
-  each project name, with the same Owner / Repository / Workflow as above.
+  Go to **Your account → Publishing** (https://pypi.org/manage/account/publishing/)
+  — that page has the extra **PyPI Project Name** field, which is what makes it a
+  *pending* publisher. Add one per name with its Environment from the table.
+
+> GitHub creates the five environments (`pypi-core`, … `pypi-sdk`) automatically
+> the first time the workflow runs. No manual GitHub setup is needed; if a run
+> ever reports a missing environment, add it under **Settings → Environments**.
 
 ### On TestPyPI (https://test.pypi.org) — for dry runs
 
-Repeat the **pending publisher** step for all five names on TestPyPI. This lets
-you rehearse a release without touching real PyPI.
+Repeat the **pending publisher** step for all five names on TestPyPI, using the
+same Environment names. This lets you rehearse a release without touching PyPI.
 
 ## Dry run (TestPyPI)
 

@@ -28,6 +28,12 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # A distinct GitHub environment per package gives each trusted-publisher
+    # identity a unique owner/repo/workflow/environment tuple. PyPI refuses two
+    # *pending* publishers that share the same tuple, so a blank environment can
+    # cover only one package; naming one per package sidesteps that. GitHub
+    # creates these environments automatically on first run.
+    environment: ${{ matrix.environment }}
     permissions:
       id-token: write # OIDC token for Trusted Publishing — no secrets needed
     strategy:
@@ -37,11 +43,11 @@ jobs:
           # hirara-core has no repo-local dependency, so it can always build
           # first; the others depend on it, but publish order does not matter to
           # PyPI (it does not resolve dependencies at upload time).
-          - { name: hirara-core, path: hirara-core }
-          - { name: hirara-web, path: "." }
-          - { name: hirarapdf, path: hirarapdf }
-          - { name: hirarareader, path: hirarareader }
-          - { name: hirara, path: hirara }
+          - { name: hirara-core, path: hirara-core, environment: pypi-core }
+          - { name: hirara-web, path: ".", environment: pypi-web }
+          - { name: hirarapdf, path: hirarapdf, environment: pypi-pdf }
+          - { name: hirarareader, path: hirarareader, environment: pypi-reader }
+          - { name: hirara, path: hirara, environment: pypi-sdk }
     steps:
       - uses: actions/checkout@v4
 
