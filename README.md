@@ -17,12 +17,16 @@ scanned PDFs, and [`hirarareader/`](hirarareader/) reads Office documents (Word,
 PowerPoint, Excel). Same principle every time: self-hosted, key-free, and built
 to be inspected.
 
+[![PyPI](https://img.shields.io/pypi/v/hirara.svg)](https://pypi.org/project/hirara/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-177%20passing-brightgreen.svg)](#testing)
 [![MCP](https://img.shields.io/badge/MCP-compatible-8A2BE2.svg)](https://modelcontextprotocol.io/)
 
 </div>
+
+> **`pip install hirara`** — the Python client is live on
+> [PyPI](https://pypi.org/project/hirara/). It talks to a hub you self-host
+> (see **Usage**).
 
 ---
 

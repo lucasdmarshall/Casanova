@@ -7,6 +7,7 @@
 Call web search, PDF, OCR, code execution, and Office-document tools like
 functions — against a hub you run. No API keys.
 
+[![PyPI](https://img.shields.io/pypi/v/hirara.svg)](https://pypi.org/project/hirara/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 
