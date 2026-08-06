@@ -48,24 +48,49 @@ quietly re-open the egress hole. That is not hypothetical: the transcription
 tool first shipped a URL fetch with no perimeter at all; wiring it to the shared
 guard is what closed it.
 
-## One endpoint for everything
+## Usage
+
+Hirara is **self-hosted**: you run the backend once — on a machine *you* control —
+then call it. Nothing to sign up for, no API keys, and your data never leaves
+your machine.
+
+```
+   run the backend   ─────►   call it (pick one)
+   tools + gateway            Python SDK · HTTP · MCP
+```
+
+### 1 · Run the hub
 
 [`hirara-hub`](hirara-hub/) is a thin gateway that fronts every tool: one
 aggregated `/schemas`, one `/call` forwarder, one federating MCP server, and
-opt-in bearer auth — while each tool stays isolated in its own container. Bring
-the whole stack up with a single command:
+opt-in auth — while each tool stays isolated in its own container. The whole
+stack comes up with one command:
 
 ```bash
+git clone https://github.com/lucasdmarshall/Hirara.git
+cd Hirara
 docker compose -f docker-compose.hub.yml up -d --build
 ```
 
-Only the gateway publishes a port (loopback `8080`); the tools talk to it over a
-private network. Auth is off by default (fine for local use) — set `HUB_TOKEN`
-before you expose it.
+Only the gateway publishes a port — `127.0.0.1:8080`. Check it:
 
-### Use it from Python
+```bash
+curl localhost:8080/health
+```
 
-The [`hirara`](hirara/) client calls the hub's tools like functions:
+- **Auth is off by default** (fine on loopback). Require a token by setting
+  `HUB_TOKEN` before starting; then every call needs `Authorization: Bearer …`.
+- **Run it on a machine you control** — your laptop or your own VPS.
+  `execute_code` mounts the Docker socket (host-root-equivalent), so do **not**
+  run the full stack on a shared or production box.
+- The pure-Python tools (`pdf`, `reader`, `ocr`) can also run standalone without
+  Docker — see each package's README.
+
+### 2 · Call it
+
+Three ways, all hitting the same hub. Pick whichever fits.
+
+#### a) Python — `import hirara`
 
 ```bash
 pip install hirara
@@ -73,17 +98,65 @@ pip install hirara
 
 ```python
 import hirara
-hirara.configure("http://localhost:8080")           # or set HIRARA_HUB_URL
+hirara.configure("http://localhost:8080")        # or set HIRARA_HUB_URL
 
 hirara.web_search("rust borrow checker", max_results=5)
-hirara.office_read(path="deck.pptx")["markdown"]     # reads + base64s the file for you
+hirara.web_fetch("https://example.com")
+hirara.pdf_read(path="report.pdf")               # local file → auto-base64'd for you
+hirara.pdf_create("# Title\n\nBody", format="markdown")
+hirara.office_read(path="deck.pptx")["markdown"]
+hirara.ocr_read(path="scan.png", languages=["en"])
+hirara.form_extract(path="invoice.pdf")["fields"]
 hirara.execute_code("python", "print(sum(range(10)))")
 ```
 
-It's a thin client over a running hub — `pip install hirara` plus a hub up and
-you're calling tools; no hub, no results.
+- File tools take `path=` (the client reads + base64s it — works even when the
+  hub can't see your disk), or `url=` / `base64=`.
+- A tool problem raises `HiraraToolError`; an unreachable hub or bad token raises
+  `HiraraError`.
+- Multiple hubs / custom timeout:
+  `from hirara import Client; hub = Client("http://…", token="…")`.
+
+#### b) HTTP — any language
+
+```bash
+# every available tool, as a drop-in `tools` array for an LLM
+curl localhost:8080/schemas
+
+# call one
+curl -X POST localhost:8080/call -H 'content-type: application/json' \
+  -d '{"name":"web_search","arguments":{"query":"rust borrow checker","max_results":5}}'
+```
+
+Responses are JSON; errors come back in the body (`"error": …`), not as HTTP
+status codes — the caller is an agent loop.
+
+#### c) MCP — for agents (Claude Desktop, Cursor, …)
+
+The hub ships a **federating MCP server** that exposes every tool as one MCP
+endpoint over stdio:
+
+```bash
+python -m hirara_hub.mcp_server
+```
+
+Point your MCP client at that command. It reaches the tool backends via the
+`HUB_*_URL` env vars, so run it where it can see the running stack.
+
+### Discover & upgrade
+
+- `hirara.tools()` / `GET /schemas` — the live tool list (only backends that are
+  actually **up** appear — the hub never advertises a tool it can't route to).
+- `hirara.health()` / `GET /health` — which backends are running.
+- **New tools appear automatically.** Add a tool to the hub and it's instantly
+  callable via `hirara.call("new_tool", {…})` or HTTP — no SDK upgrade needed.
+  `pip install --upgrade hirara` only when you want a new typed convenience method.
 
 ---
+
+> The rest of this README documents the **`web_search` / `web_fetch` tool**
+> specifically — its standalone deployment (port `8000`), design, and security.
+> For the hub as a whole, everything you need is in **Usage** above.
 
 ## Why
 
