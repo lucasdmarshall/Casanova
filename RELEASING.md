@@ -81,13 +81,15 @@ same Environment names. This lets you rehearse a release without touching PyPI.
    (and `__version__` where the package tracks it). Leave unchanged packages
    alone — their upload will simply be skipped.
 2. Commit the bumps.
-3. Tag and push:
+3. Publish. Either push a tag, or run the workflow manually:
    ```bash
-   git tag -a v0.2.0 -m "Local mode: run web/pdf/office tools in-process"
-   git push origin v0.2.0
+   git tag -a v0.2.0 -m "…" && git push origin v0.2.0     # tag trigger
+   # or, more reliably (see gotchas): Actions → Publish to PyPI → Run workflow
+   # → target = pypi, or:  gh workflow run pypi-publish.yml --ref main -f target=pypi
    ```
 4. The workflow builds and publishes to **real PyPI**. Watch the Actions run;
-   each package job reports published-or-skipped.
+   each package job reports published-or-skipped (`skip-existing` keeps re-runs
+   safe — only new versions upload).
 
 ## Verify
 
@@ -98,3 +100,21 @@ python -c "import hirara; hirara.configure(local=True); print([t['name'] for t i
 
 You should see the in-process tools (`pdf_read`, `web_fetch`, `office_read`, …)
 with no hub running.
+
+## Gotchas (learned in the first release, 2026-08-07)
+
+- **PyPI limits you to 3 *pending* trusted publishers at once.** A pending
+  publisher stops counting the moment its project is first published. With five
+  new names, register ≤3, run the workflow (those become real projects), then
+  register the rest and run again. `skip-existing` means the already-published
+  ones are skipped on the second run.
+- **Each publisher needs a distinct environment.** PyPI rejects two pending
+  publishers that share the same owner/repo/workflow/environment; that is why
+  every package has its own env name (see the table above).
+- **`max-parallel: 1` is deliberate.** Fanning out all jobs at once starved the
+  runner queue on this account (jobs waited ~15 min, then were auto-cancelled).
+  Serial publishing is slower but reliable.
+- **Prefer `workflow_dispatch` over the tag trigger if a run doesn't appear.**
+  During a GitHub Actions incident the `v*` tag push spawned no run at all;
+  a manual dispatch worked once Actions recovered. Check
+  https://www.githubstatus.com/ if nothing starts.
