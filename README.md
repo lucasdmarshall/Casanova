@@ -4,7 +4,7 @@
 
 # Hirara
 
-**A self-hosted tool hub for AI agents — no third-party API keys.**
+**A self-hosted toolkit for AI agents and LLMs — web search, PDF, OCR, Office, and sandboxed code execution, via a Python SDK or MCP. No third-party API keys.**
 
 Hirara is a growing collection of agent tools you run on your own machine.
 `web_search` and `web_fetch` replace hosted agent web tools — search against
